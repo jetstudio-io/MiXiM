@@ -129,7 +129,6 @@ void TADMacLayer::initialize(int stage) {
 
         scheduleAt(0.0, startTADMAC);
     }
-    cout << "In init: sysClock = " << sysClock << endl;
 }
 
 TADMacLayer::~TADMacLayer() {
@@ -336,6 +335,8 @@ void TADMacLayer::handleSelfMsgSender(cMessage *msg) {
                 phy->setRadioState(MiximRadio::SLEEP);
                 macState = SLEEP;
                 scheduleAt(start + initialWakeupInterval, wakeup);
+                //remove event wait ack timeout
+                cancelEvent(resendData);
                 return;
             }
             break;
