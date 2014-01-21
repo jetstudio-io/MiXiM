@@ -20,10 +20,13 @@
 #include <sstream>
 #include <vector>
 #include <list>
+#include <fstream>
 
 #include "MiXiMDefs.h"
 #include "BaseMacLayer.h"
 #include <DroppedPacket.h>
+
+using namespace std;
 
 class MacPkt;
 
@@ -107,6 +110,9 @@ public:
     virtual void handleLowerControl(cMessage *msg);
 
 protected:
+    //used to log interval value
+    ofstream log_interval;
+
     typedef std::list<macpkt_ptr_t> MacQueue;
 
     /** @brief A queue to store packets from upper layer in case another

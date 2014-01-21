@@ -25,8 +25,6 @@
 #include "MacPkt_m.h"
 #include "MacToPhyInterface.h"
 
-using namespace std;
-
 Define_Module(TADMacLayer)
 
 /**
