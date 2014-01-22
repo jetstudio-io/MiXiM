@@ -68,6 +68,7 @@ void BMacLayer::initialize(int stage)
 		droppedPacket.setReason(DroppedPacket::NONE);
 		nicId = getNic()->getId();
 		WATCH(macState);
+		std::cout << checkInterval << std::endl;
 	}
 	else if(stage == 1) {
 		wakeup = new cMessage("wakeup");

@@ -72,16 +72,18 @@ public:
     TADMacLayer() :
             BaseMacLayer(), macQueue(), nbTxDataPackets(0), nbTxWB(0), nbRxDataPackets(0),
                     nbRxWB(0), nbMissedAcks(0), nbRecvdAcks(0), nbDroppedDataPackets(0),
-                    nbTxAcks(0), macState(INIT), startTADMAC(NULL), wakeup(NULL),
+                    nbTxAcks(0),
+                    TSR_length(16), wakeupInterval(1), waitCCA(0.1), waitWB(0.3),
+                    waitACK(0.3), waitDATA(0.3), sysClock(0.001), alpha(0.5),
+                    macState(INIT), startTADMAC(NULL), wakeup(NULL),
                     waitWBTimeout(NULL), receivedWB(NULL), ccaTimeout(NULL), sentData(NULL),
                     resendData(NULL), receivedACK(NULL), ccaWBTimeout(NULL),
                     sentWB(NULL), waitDATATimeout(NULL), receivedDATA(NULL),
                     ccaACKTimeout(NULL), sentACK(NULL),
                     lastDataPktSrcAddr(), lastDataPktDestAddr(),
                     txAttempts(0), droppedPacket(), nicId(-1), queueLength(0), animation(false),
-                    bitrate(0), checkInterval(0), txPower(0),
-                    useMacAcks(0), maxTxAttempts(0), stats(false),
-                    TSR_length(16), sysClock(0.05), initialWakeupInterval(1), wakeupInterval(1), alpha(0.5)
+                    bitrate(0), txPower(0),
+                    useMacAcks(0), maxTxAttempts(0), stats(false)
     {}
     virtual ~TADMacLayer();
 
@@ -110,8 +112,10 @@ public:
     virtual void handleLowerControl(cMessage *msg);
 
 protected:
-    //used to log interval value
-    ofstream log_interval;
+    //used to log interval value in receiver
+    ofstream log_wakeupInterval;
+    //used to log wait duration for wakeup beacon from receiver in sender
+    ofstream log_wb;
 
     typedef std::list<macpkt_ptr_t> MacQueue;
 
@@ -133,9 +137,9 @@ protected:
 
     // Note type
     enum ROLES {
-        RECEIVER,
-        SENDER,
-        TRANSMITER
+        NODE_RECEIVER,
+        NODE_SENDER,
+        NODE_TRANSMITER
     };
     ROLES role;
 
@@ -143,28 +147,18 @@ protected:
     int TSR_length;
     /** @brief store the moment wakeup, will be used to calculate the rest time */
     simtime_t start;
+    /** store the moment the sender wait for WB */
+    simtime_t startWaitWB;
+
+    double wakeupInterval;
+    double waitCCA;
+    double waitWB;
+    double waitACK;
+    double waitDATA;
     double sysClock;
     double alpha;
 
     /** @brief MAC states
-     *
-     *  The MAC states help to keep track what the MAC is actually
-     *  trying to do.
-     *  INIT        -- node has just started and its status is unclear
-     *  SLEEP       -- node sleeps, but accepts packets from the network layer
-     *  CCA         -- Clear Channel Assessment - MAC checks
-     *         whether medium is busy
-     *  SEND_WB     -- receiver node sends wake up beacon to sender
-     *  WAIT_DATA   -- node has received at least one preamble from another node
-     *  				and wiats for the actual data packet
-     *  SEND_DATA   -- node has sent enough preambles and sends the actual data
-     *  				packet
-     *  WAIT_TX_DATA_OVER -- node waits until the data packet sending is ready
-     *  WAIT_ACK -- node has sent the data packet and waits for ack from the
-     *  			   receiving node
-     *  SEND_ACK -- node send an ACK back to the sender
-     *  WAIT_ACK_TX -- node waits until the transmission of the ack packet is
-     *  				  over
      */
     enum States {
         INIT,	        //0
@@ -249,15 +243,9 @@ protected:
      * YELLOW - node is sending
      */
     bool animation;
-    /** @brief The duration of waiting stage. */
-    double waitDuration;
-    /* @brief Initialized value for receiver wakeup interval */
-    double initialWakeupInterval;
-    double wakeupInterval;
+
     /** @brief The bitrate of transmission */
     double bitrate;
-    /** @brief The duration of CCA */
-    double checkInterval;
     /** @brief Transmission power of the node */
     double txPower;
     /** @brief Use MAC level acks or not */

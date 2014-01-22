@@ -52,15 +52,18 @@ simple TADMacLayer extends BaseMacLayer
 		// 2 - transmiter : will be implemented later
 		int role = default(1);
 		
-		// initialize value for wakeup interval - this value is variable for recevier but fixed for sender
-		double initialWakeupInterval @unit(s) = default(0.5s);
-		
-		// duration of waiting stage (wait WB, wait ACK)
-		double waitDuration @unit(s) = default(0.2s);
-		
-		// system clock
-		double sysClock @unit(s) = default(0.05s);
-		
+		// wake up interval for each node - used in receiver only because in sender, node wake up when it has data to send
+		double WUInterval = default(1);
+		// time for CCA
+		double waitCCA @unit(s) = default(0.1s);
+		// time to wait WB - used on sender only because receiver send WB
+		double waitWB @unit(s) = default(0.3s);
+		// time to wait ACK - used on sender
+		double waitACK @unit(s) = default(0.3s);
+		// time to wait DATA - used on receiver
+		double waitDATA @unit(s) = default(0.3s);
+		// system clock - we calculate by 1ms
+		double sysClock @unit(s) = default(0.001s);
 		// weighting factor
 		double alpha = default(0.5);
 		
@@ -68,9 +71,6 @@ simple TADMacLayer extends BaseMacLayer
         bool debug = default(false);
         //collect statistics?
         bool stats = default(true);
-
-		// how long is the check interval (CCA)?
-		double checkInterval @unit(s) = default(0.1s);
 		
 		// size of the MAC queue (maximum number of packets in Tx buffer)
         int queueLength = default(20);
