@@ -12,7 +12,6 @@
 .tkenvrc
 .tmp*
 env.sh
-**/Makefile
 Makefile.vc
 **/Makefile.vc
 out
