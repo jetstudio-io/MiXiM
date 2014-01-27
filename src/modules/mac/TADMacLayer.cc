@@ -126,10 +126,10 @@ void TADMacLayer::initialize(int stage) {
         sentACK->setKind(TADMAC_SENT_ACK);
 
         if (role == NODE_RECEIVER) {
-            log_wakeupInterval.open("results/wakeupinterval.csv");
+            log_wakeupInterval.open(logFileName);
             log_tsr.open("results/tsr.txt");
         } else {
-            log_wb.open("results/wb.csv");
+            log_wb.open(logFileName);
         }
         cout << wakeupInterval << endl;
         wakeupInterval /= 1000;
@@ -184,7 +184,7 @@ void TADMacLayer::finish() {
         recordScalar("nbRecvdAcks", nbRecvdAcks);
         recordScalar("nbTxAcks", nbTxAcks);
         recordScalar("nbDroppedDataPackets", nbDroppedDataPackets);
-        //recordScalar("timeSleep", timeSleep);
+        recordScalar("WUInt", wakeupInterval);
         //recordScalar("timeRX", timeRX);
         //recordScalar("timeTX", timeTX);
     }
@@ -414,7 +414,7 @@ void TADMacLayer::handleSelfMsgReceiver(cMessage *msg) {
                 changeDisplayColor(BLACK);
                 phy->setRadioState(MiximRadio::SLEEP);
                 macState = SLEEP;
-                scheduleAt(simTime() + dblrand(), wakeup);
+                scheduleAt(simTime(), wakeup);
                 return;
             }
             break;
@@ -477,7 +477,7 @@ void TADMacLayer::handleSelfMsgReceiver(cMessage *msg) {
                 // MAC state is CCA
                 macState = SLEEP;
                 // Calculate next wakeup interval
-                wakeupInterval = getNextInterval(false);
+                calculateNextInterval();
                 if (simTime() > start + wakeupInterval) {
                     start += wakeupInterval;
                 }
@@ -501,6 +501,10 @@ void TADMacLayer::handleSelfMsgReceiver(cMessage *msg) {
                 }
 
                 cancelEvent(waitDATATimeout);
+
+                // Calculate next wakeup interval
+                calculateNextInterval(msg);
+
                 if ((useMacAcks) && (dest == myMacAddr))
                 {
                     debugEV << "State WAIT_DATA, message TADMAC_DATA, new state"
@@ -535,8 +539,6 @@ void TADMacLayer::handleSelfMsgReceiver(cMessage *msg) {
                 phy->setRadioState(MiximRadio::SLEEP);
                 // MAC state is CCA
                 macState = SLEEP;
-                // Calculate next wakeup interval
-                wakeupInterval = getNextInterval(true);
 
                 if (simTime() - start > wakeupInterval) {
                     start += wakeupInterval;
@@ -554,7 +556,7 @@ void TADMacLayer::handleSelfMsgReceiver(cMessage *msg) {
 /**
  *
  */
-double TADMacLayer::getNextInterval(bool isReceivedData) {
+void TADMacLayer::calculateNextInterval(cMessage *msg) {
     int n01, n11, nc01, nc11;
     n01 = n11 = nc01 = nc11 = 0;
     int n02, n12, nc02, nc12;
@@ -570,7 +572,7 @@ double TADMacLayer::getNextInterval(bool isReceivedData) {
         TSR[i] = TSR[i + 1];
     }
     log_tsr << TSR[TSR_length - 1] << endl;
-    TSR[TSR_length - 1] = (isReceivedData) ? 1 : 0;
+    TSR[TSR_length - 1] = (msg == NULL) ? 0 : 1;
 
     log_tsr << "old WUInterval: " << wakeupInterval << endl;
     // Calculate X1;
@@ -609,18 +611,54 @@ double TADMacLayer::getNextInterval(bool isReceivedData) {
     // calculate the traffic weighting
     double mu = alpha * x1 + (1 - alpha) * x2;
     log_tsr << "mu: " << mu << endl;
-    // calculate the correlator
+    // calculate the correlator see code matlab in IWCLD_11/First_paper/Adaptive_MAC/Done_Codes/Test_For_IWCLD.m
+    if (mu * 10 == 0) {
+        if (msg != NULL) {
+            macpkttad_ptr_t mac  = static_cast<macpkttad_ptr_t>(msg);
+            double idle = mac->getIdle() / 1000;
+            delete mac;
+            mac = NULL;
+            idle_array[idx] = idle;
+            idx++;
+
+            if (idle_array[0] != 0 && idle_array[1] != 0) {
+                double WUInt_diff = (idle_array[1] - idle_array[0]) / 2;
+                wakeupIntervalLook = wakeupInterval + WUInt_diff;
+                wakeupInterval = (wakeupIntervalLook - idle);
+                if (wakeupInterval < 0) {
+                    wakeupInterval += wakeupIntervalLook;
+                }
+                first_time++;
+                idle_array[0] = idle_array[1] = 0;
+            }
+        }
+    } else {
+        if (idx == 1) {
+            idx--;
+        }
+        if (wakeupIntervalLook == 0) {
+            wakeupInterval += mu * 75 * sysClock;
+            wakeupInterval = ceil(wakeupInterval * 1000) / 1000;
+        } else {
+            wakeupInterval = wakeupIntervalLook / 1000;
+        }
+    }
+
+    if (first_time == 2) {
+        first_time++;
+    } else {
+        if (first_time == 3) {
+            wakeupInterval = wakeupIntervalLook;
+            wakeupIntervalLook = 0;
+        }
+    }
     e = (n01 + n02) - (n11 + n12);
     log_tsr << "e: " << e << endl;
-    double nextInterval = wakeupInterval + (mu) * 100 * (3/4) * sysClock;
-    nextInterval = ceil(nextInterval * 1000) / 1000;
-    log_tsr << "nextInterval: " << nextInterval << endl;
-
-    return nextInterval;
+    log_tsr << "nextInterval: " << wakeupInterval << endl;
 }
 
 /**
- * Handle BMAC preambles and received data packets.
+ * Handle TADMAC preambles and received data packets.
  */
 void TADMacLayer::handleLowerMsg(cMessage *msg) {
     handleSelfMsg(msg);
@@ -638,14 +676,15 @@ void TADMacLayer::handleSelfMsg(cMessage *msg) {
 
 void TADMacLayer::sendDataPacket() {
     nbTxDataPackets++;
-    macpkt_ptr_t pkt = new MacPkt();
+    macpkttad_ptr_t pkt = new MacPktTAD();
     pkt->setSrcAddr(myMacAddr);
     pkt->setDestAddr(MACAddress::UNSPECIFIED_ADDRESS);
 //    macpkt_ptr_t pkt = macQueue.front()->dup();
     lastDataPktDestAddr = pkt->getDestAddr();
     pkt->setKind(TADMAC_DATA);
     pkt->setByteLength(16);
-    pkt->setSequenceId(floor(simTime() * 1000));
+    double idle = simTime().dbl() - waitCCA - startWaitWB.dbl();
+    pkt->setIdle(int(idle * 1000));
     attachSignal(pkt);
     sendDown(pkt);
 }

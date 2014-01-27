@@ -167,6 +167,7 @@ OBJS = \
     $O/base/messages/BorderMsg_m.o \
     $O/base/messages/ChannelSenseRequest_m.o \
     $O/base/messages/MacPkt_m.o \
+    $O/base/messages/MacPktTAD_m.o \
     $O/base/messages/MiximAirFrame_m.o \
     $O/base/messages/NetwPkt_m.o \
     $O/inet_stub/linklayer/contract/Ieee802Ctrl_m.o \
@@ -185,6 +186,7 @@ MSGFILES = \
     base/messages/BorderMsg.msg \
     base/messages/ChannelSenseRequest.msg \
     base/messages/MacPkt.msg \
+    base/messages/MacPktTAD.msg \
     base/messages/MiximAirFrame.msg \
     base/messages/NetwPkt.msg \
     inet_stub/linklayer/contract/Ieee802Ctrl.msg \
@@ -398,6 +400,14 @@ $O/base/messages/ChannelSenseRequest_m.o: base/messages/ChannelSenseRequest_m.cc
 	base/phyLayer/ChannelState.h \
 	base/utils/MiXiMDefs.h \
 	base/utils/miximkerneldefs.h
+$O/base/messages/MacPktTAD_m.o: base/messages/MacPktTAD_m.cc \
+	base/messages/MacPktTAD_m.h \
+	base/messages/MacPkt_m.h \
+	base/utils/MiXiMDefs.h \
+	base/utils/SimpleAddress.h \
+	base/utils/miximkerneldefs.h \
+	inet_stub/base/INETDefs.h \
+	inet_stub/linklayer/contract/MACAddress.h
 $O/base/messages/MacPkt_m.o: base/messages/MacPkt_m.cc \
 	base/messages/MacPkt_m.h \
 	base/utils/MiXiMDefs.h \
@@ -1483,6 +1493,7 @@ $O/modules/mac/Mac80211MultiChannel.o: modules/mac/Mac80211MultiChannel.cc \
 $O/modules/mac/TADMacLayer.o: modules/mac/TADMacLayer.cc \
 	base/connectionManager/BaseConnectionManager.h \
 	base/connectionManager/NicEntry.h \
+	base/messages/MacPktTAD_m.h \
 	base/messages/MacPkt_m.h \
 	base/modules/AddressingInterface.h \
 	base/modules/ArpInterface.h \

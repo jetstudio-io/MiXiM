@@ -25,10 +25,11 @@
 #include "MiXiMDefs.h"
 #include "BaseMacLayer.h"
 #include <DroppedPacket.h>
+#include <MacPktTAD_m.h>
 
 using namespace std;
 
-class MacPkt;
+class MacPktTAD;
 
 /**
  * @brief Implementation of B-MAC (called also Berkeley MAC, Low Power
@@ -83,8 +84,12 @@ public:
                     lastDataPktSrcAddr(), lastDataPktDestAddr(),
                     txAttempts(0), droppedPacket(), nicId(-1), queueLength(0), animation(false),
                     bitrate(0), txPower(0),
-                    useMacAcks(0), maxTxAttempts(0), stats(false)
+                    useMacAcks(0), maxTxAttempts(0), stats(false), idx(0), first_time(0), wakeupIntervalLook(0),
+                    logFileName("log.csv")
     {}
+
+    typedef MacPktTAD* macpkttad_ptr_t;
+
     virtual ~TADMacLayer();
 
     /** @brief Initialization of the module and some variables*/
@@ -282,7 +287,17 @@ protected:
     bool addToQueue(cMessage * msg);
 
     /** @brief Calculate the next wakeup interval*/
-    double getNextInterval(bool isReceivedData);
+    void calculateNextInterval(cMessage *msg=NULL);
+
+    /**
+     * These variables used for calculate the error correlator.
+     */
+    int idx;
+    int first_time;
+    double idle_array[2];
+    double wakeupIntervalLook;
+
+    char *logFileName;
 };
 
 #endif /* TADMACLAYER_H_ */
