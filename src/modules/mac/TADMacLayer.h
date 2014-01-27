@@ -116,6 +116,8 @@ protected:
     ofstream log_wakeupInterval;
     //used to log wait duration for wakeup beacon from receiver in sender
     ofstream log_wb;
+    //
+    ofstream log_tsr;
 
     typedef std::list<macpkt_ptr_t> MacQueue;
 

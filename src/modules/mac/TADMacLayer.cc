@@ -54,7 +54,7 @@ void TADMacLayer::initialize(int stage) {
         txPower = hasPar("txPower") ? par("txPower") : 50.;
         useMacAcks = hasPar("useMACAcks") ? par("useMACAcks") : false;
         maxTxAttempts = hasPar("maxTxAttempts") ? par("maxTxAttempts") : 2;
-        cout << this->getNode()->getIndex() << "-headerLength: " << headerLength << ", bitrate: " << bitrate
+        debugEV << "headerLength: " << headerLength << ", bitrate: " << bitrate
                        << endl;
 
         stats = par("stats");
@@ -127,12 +127,20 @@ void TADMacLayer::initialize(int stage) {
 
         if (role == NODE_RECEIVER) {
             log_wakeupInterval.open("results/wakeupinterval.csv");
+            log_tsr.open("results/tsr.txt");
         } else {
             log_wb.open("results/wb.csv");
         }
         cout << wakeupInterval << endl;
         wakeupInterval /= 1000;
         cout << wakeupInterval << endl;
+
+        TSR_length = 4;
+
+        for (int i = 0; i < TSR_length; i++) {
+                TSR[i] = 0;
+        }
+
         scheduleAt(0.0, startTADMAC);
     }
 }
@@ -188,13 +196,19 @@ void TADMacLayer::finish() {
  * nothing, if node is working.
  */
 void TADMacLayer::handleUpperMsg(cMessage *msg) {
+    return;
+    if (role == NODE_RECEIVER) {
+        return;
+    }
     bool pktAdded = addToQueue(msg);
     if (!pktAdded)
         return;
     // force wakeup now - in sender node, we wake up on demand to transmit data
-    if (wakeup->isScheduled() && (macState == SLEEP)) {
-        cancelEvent(wakeup);
-        scheduleAt(simTime() + dblrand() * 0.1f, wakeup);
+    if (macState == SLEEP) {
+        if (wakeup->isScheduled()) {
+            cancelEvent(wakeup);
+        }
+        scheduleAt(simTime(), wakeup);
     }
 }
 
@@ -240,18 +254,18 @@ void TADMacLayer::handleSelfMsgSender(cMessage *msg) {
         // Call at first time after initialize the note
         case INIT:
             if (msg->getKind() == TADMAC_START) {
-                cout << this->getNode()->getIndex() << "-State INIT, message TADMAC_START, new state SLEEP" << endl;
+                debugEV << "State INIT, message TADMAC_START, new state SLEEP" << endl;
                 changeDisplayColor(BLACK);
                 phy->setRadioState(MiximRadio::SLEEP);
                 macState = SLEEP;
-                scheduleAt(simTime() + dblrand(), wakeup);
+                scheduleAt(simTime(), wakeup);
                 return;
             }
             break;
         // This node is sleeping & time to wakeup
         case SLEEP:
             if (msg->getKind() == TADMAC_WAKE_UP) {
-                cout << this->getNode()->getIndex() << "-State SLEEP, message TADMAC_WAKEUP, new state WAIT_WB, next event call at: " << simTime() + waitWB << endl;
+                debugEV << "State SLEEP, message TADMAC_WAKEUP, new state WAIT_WB, next event call after " << waitWB << endl;
                 // change icon to green light -> note is wait for sign
                 changeDisplayColor(GREEN);
                 // set antenna to receiving sign state
@@ -273,7 +287,7 @@ void TADMacLayer::handleSelfMsgSender(cMessage *msg) {
         case WAIT_WB:
             if (msg->getKind() == TADMAC_WB_TIMEOUT) {
                 // we didn't received the WB from receiver -> change back to sleep state & will wake up after wakeupInterval seconds
-                cout << this->getNode()->getIndex() << "-State WAIT_WB, message TADMAC_WB_TIMEOUT, new state SLEEP, next event call at: " << start + wakeupInterval << endl;
+                debugEV << "State WAIT_WB, message TADMAC_WB_TIMEOUT, new state SLEEP, next event after: " << wakeupInterval << endl;
                 // change icon to black light -> note is inactive
                 changeDisplayColor(BLACK);
                 // Change antenna to sleep state
@@ -291,7 +305,7 @@ void TADMacLayer::handleSelfMsgSender(cMessage *msg) {
             // duration the WAIT_WB, received the WB message -> change to CCA state & schedule the timeout event
             if (msg->getKind() == TADMAC_WB) {
                 nbRxWB++;
-                cout << this->getNode()->getIndex() << "-State WAIT_WB, message TADMAC_WB received, new state CCA, next event call at: " << simTime() + waitCCA << endl;
+                debugEV << "State WAIT_WB, message TADMAC_WB received, new state CCA, next event after: " << waitCCA << endl;
                 macState = CCA;
                 // Don't need to call the event to handle WB timeout
                 cancelEvent (waitWBTimeout);
@@ -306,7 +320,7 @@ void TADMacLayer::handleSelfMsgSender(cMessage *msg) {
         case CCA:
             if (msg->getKind() == TADMAC_CCA_TIMEOUT) {
                 // The radio is clean so we can send the data.
-                cout << this->getNode()->getIndex() << "-State CCA, message TADMAC_CCA_TIMEOUT, new state SEND_DATA" << endl;
+                debugEV << "State CCA, message TADMAC_CCA_TIMEOUT, new state SEND_DATA" << endl;
                 changeDisplayColor(YELLOW);
                 // set antenna to sending sign state
                 phy->setRadioState(MiximRadio::TX);
@@ -323,7 +337,7 @@ void TADMacLayer::handleSelfMsgSender(cMessage *msg) {
         case SEND_DATA:
             // Finish send data to receiver
             if (msg->getKind() == TADMAC_SENT_DATA) {
-                cout << this->getNode()->getIndex() << "-State SEND_DATA, message TADMAC_SENT_DATA, new state WAIT_ACK" << endl;
+                debugEV << "State SEND_DATA, message TADMAC_SENT_DATA, new state WAIT_ACK" << endl;
                 // change icon to green light -> note is wait for sign
                 changeDisplayColor(GREEN);
                 // set antenna to state receive sign
@@ -341,7 +355,7 @@ void TADMacLayer::handleSelfMsgSender(cMessage *msg) {
                 // if the number resend data is not reach max time
                 if (txAttempts < maxTxAttempts) {
                     // No ACK received. try to send data again.
-                    cout << this->getNode()->getIndex() << "-State WAIT_ACK, message TADMAC_RESEND_DATA, new state WAIT_WB, next event at: " << simTime() + waitWB << endl;
+                    debugEV << "State WAIT_ACK, message TADMAC_RESEND_DATA, new state WAIT_WB, next event at: " << simTime() + waitWB << endl;
                     changeDisplayColor(GREEN);
                     phy->setRadioState(MiximRadio::RX);
                     txAttempts++;
@@ -359,7 +373,7 @@ void TADMacLayer::handleSelfMsgSender(cMessage *msg) {
                     if (start + wakeupInterval < simTime()) {
                         start += wakeupInterval * floor((simTime() - start) / wakeupInterval);
                     }
-                    cout << this->getNode()->getIndex() << "-State WAIT_ACK, message TADMAC_RESEND_DATA, new state SLEEP (resend too much), next event at: " << start + wakeupInterval << endl;
+                    debugEV << "State WAIT_ACK, message TADMAC_RESEND_DATA, new state SLEEP (resend too much), next event at: " << start + wakeupInterval << endl;
                     scheduleAt(start + wakeupInterval, wakeup);
                     nbMissedAcks++;
                 }
@@ -367,7 +381,7 @@ void TADMacLayer::handleSelfMsgSender(cMessage *msg) {
             }
             // received ACK -> change to sleep, schedule next wakeup time
             if (msg->getKind() == TADMAC_RECEIVED_ACK || msg->getKind() == TADMAC_ACK) {
-                cout << this->getNode()->getIndex() << "-State WAIT_ACK, message TADMAC_RECEIVED_ACK, new state SLEEP" << endl;
+                debugEV << "State WAIT_ACK, message TADMAC_RECEIVED_ACK, new state SLEEP" << endl;
                 changeDisplayColor(BLACK);
                 phy->setRadioState(MiximRadio::SLEEP);
                 macState = SLEEP;
@@ -375,7 +389,7 @@ void TADMacLayer::handleSelfMsgSender(cMessage *msg) {
                 if (start + wakeupInterval < simTime()) {
                     start += wakeupInterval * floor((simTime() - start) / wakeupInterval);
                 }
-                cout << this->getNode()->getIndex() << "-State WAIT_ACK, message TADMAC_RESEND_DATA, new state SLEEP (resend too much), next event at: " << start + wakeupInterval << endl;
+                debugEV << "State WAIT_ACK, message TADMAC_RESEND_DATA, new state SLEEP (resend too much), next event at: " << start + wakeupInterval << endl;
                 scheduleAt(start + wakeupInterval, wakeup);
                 //remove event wait ack timeout
                 cancelEvent(resendData);
@@ -396,7 +410,7 @@ void TADMacLayer::handleSelfMsgReceiver(cMessage *msg) {
         // Call at first time after initialize the note
         case INIT:
             if (msg->getKind() == TADMAC_START) {
-                cout << this->getNode()->getIndex() << "-State INIT, message TADMAC_START, new state SLEEP" << endl;
+                debugEV << "State INIT, message TADMAC_START, new state SLEEP" << endl;
                 changeDisplayColor(BLACK);
                 phy->setRadioState(MiximRadio::SLEEP);
                 macState = SLEEP;
@@ -407,7 +421,7 @@ void TADMacLayer::handleSelfMsgReceiver(cMessage *msg) {
         // This node is sleeping & time to wakeup
         case SLEEP:
             if (msg->getKind() == TADMAC_WAKE_UP) {
-                cout << this->getNode()->getIndex() << "-State SLEEP, message TADMAC_WAKEUP, new state CCA, next event at:" << simTime() + waitCCA << endl;
+                debugEV << "State SLEEP, message TADMAC_WAKEUP, new state CCA, next event at:" << simTime() + waitCCA << endl;
                 // change icon to green light -> note is wait for sign
                 changeDisplayColor(GREEN);
                 // set antenna to receiving sign state
@@ -417,7 +431,7 @@ void TADMacLayer::handleSelfMsgReceiver(cMessage *msg) {
                 // schedule the event wait WB timeout
                 start = simTime();
                 scheduleAt(start + waitCCA, ccaWBTimeout);
-                log_wakeupInterval << start << "," << wakeupInterval << endl;
+                log_wakeupInterval << floor(start * 1000) << "," << floor(wakeupInterval * 1000) << endl;
                 return;
             }
             break;
@@ -425,7 +439,7 @@ void TADMacLayer::handleSelfMsgReceiver(cMessage *msg) {
         case CCA_WB:
             if (msg->getKind() == TADMAC_CCA_WB_TIMEOUT) {
                 // the radio is free to send WB
-                cout << this->getNode()->getIndex() << "-State CCA_WB, message TADMAC_CCA_WB_TIMEOUT, new state SEND_WB" << endl;
+                debugEV << "State CCA_WB, message TADMAC_CCA_WB_TIMEOUT, new state SEND_WB" << endl;
                 // change icon to black light -> note is inactive
                 changeDisplayColor(YELLOW);
                 // Change antenna to sleep state
@@ -441,7 +455,7 @@ void TADMacLayer::handleSelfMsgReceiver(cMessage *msg) {
         case SEND_WB:
             if (msg->getKind() == TADMAC_SENT_WB) {
                 // The radio is clean so we can send the data.
-                cout << this->getNode()->getIndex() << "-State SEND_WB, message TADMAC_SENT_WB, new state WAIT_DATA, next event at: " << simTime() + waitDATA << endl;
+                debugEV << "State SEND_WB, message TADMAC_SENT_WB, new state WAIT_DATA, next event at: " << simTime() + waitDATA << endl;
                 changeDisplayColor(GREEN);
                 // set antenna to sending sign state
                 phy->setRadioState(MiximRadio::RX);
@@ -467,7 +481,7 @@ void TADMacLayer::handleSelfMsgReceiver(cMessage *msg) {
                 if (simTime() > start + wakeupInterval) {
                     start += wakeupInterval;
                 }
-                cout << this->getNode()->getIndex() << "-State WAIT_DATA, message TADMAC_DATA_TIMEOUT, new state SLEEP, next event at: " << start + wakeupInterval << endl;
+                debugEV << "State WAIT_DATA, message TADMAC_DATA_TIMEOUT, new state SLEEP, next event at: " << start + wakeupInterval << endl;
                 // schedule the event wait WB timeout
                 scheduleAt(start + wakeupInterval, wakeup);
                 return;
@@ -479,7 +493,7 @@ void TADMacLayer::handleSelfMsgReceiver(cMessage *msg) {
                 const LAddress::L2Type& dest = mac->getDestAddr();
                 const LAddress::L2Type& src  = mac->getSrcAddr();
                 if ((dest == myMacAddr) || LAddress::isL2Broadcast(dest)) {
-                    sendUp(decapsMsg(mac));
+//                    sendUp(decapsMsg(mac));
                 } else {
                     delete msg;
                     msg = NULL;
@@ -489,7 +503,7 @@ void TADMacLayer::handleSelfMsgReceiver(cMessage *msg) {
                 cancelEvent(waitDATATimeout);
                 if ((useMacAcks) && (dest == myMacAddr))
                 {
-                    cout << this->getNode()->getIndex() << "-State WAIT_DATA, message TADMAC_DATA, new state"
+                    debugEV << "State WAIT_DATA, message TADMAC_DATA, new state"
                               " CCA_ACK" << endl;
                     macState = CCA_ACK;
                     lastDataPktSrcAddr = src;
@@ -504,7 +518,7 @@ void TADMacLayer::handleSelfMsgReceiver(cMessage *msg) {
         case CCA_ACK:
             if (msg->getKind() == TADMAC_CCA_ACK_TIMEOUT) {
                 // Radio is free to send ACK
-                cout << this->getNode()->getIndex() << "-State CCA_ACK, message TADMAC_CCA_ACK_TIMEOUT, new state SEND_ACK" << endl;
+                debugEV << "State CCA_ACK, message TADMAC_CCA_ACK_TIMEOUT, new state SEND_ACK" << endl;
                 changeDisplayColor(YELLOW);
                 phy->setRadioState(MiximRadio::TX);
                 sendMacAck();
@@ -514,7 +528,7 @@ void TADMacLayer::handleSelfMsgReceiver(cMessage *msg) {
             break;
         case SEND_ACK:
             if (msg->getKind() == TADMAC_SENT_ACK) {
-                cout << this->getNode()->getIndex() << "-State SEND_ACK, message TADMAC_SENT_ACK, new state SLEEP" << endl;
+                debugEV << "State SEND_ACK, message TADMAC_SENT_ACK, new state SLEEP" << endl;
                 // change icon to green light -> note is wait for sign
                 changeDisplayColor(BLACK);
                 // set antenna to state receive sign
@@ -548,11 +562,17 @@ double TADMacLayer::getNextInterval(bool isReceivedData) {
     double e = 0;
     double x1, x2;
     x1 = x2 = 0;
+    log_tsr << "================================================" << endl;
+    log_tsr << "old TSR: ";
     // Move the array TSR to left to store the new value in TSR[TSR_lenth - 1]
     for (int i = 0; i < TSR_length - 1; i++) {
+        log_tsr << TSR[i];
         TSR[i] = TSR[i + 1];
     }
+    log_tsr << TSR[TSR_length - 1] << endl;
     TSR[TSR_length - 1] = (isReceivedData) ? 1 : 0;
+
+    log_tsr << "old WUInterval: " << wakeupInterval << endl;
     // Calculate X1;
     for (int i = 0; i < TSR_length / 2; i++) {
         if (TSR[i] == 1) {
@@ -568,6 +588,7 @@ double TADMacLayer::getNextInterval(bool isReceivedData) {
         }
     }
     x1 = n01 * nc01 * 2 / TSR_length - n11 * nc11 * 2 / TSR_length;
+    log_tsr << "n01: " << n01 << " | nc01: " << nc01 << " | n11: " << n11 << " | nc11: " << nc11 << " | x1: " << x1 << endl;
     // Calculate X2
     for (int i = TSR_length / 2; i < TSR_length; i++) {
         if (TSR[i] == 1) {
@@ -583,12 +604,17 @@ double TADMacLayer::getNextInterval(bool isReceivedData) {
         }
     }
     x2 = n02 * nc02 * 2 / TSR_length - n12 * nc12 * 2 / TSR_length;
+    log_tsr << "n02: " << n02 << " | nc02: " << nc02 << " | n12: " << n12 << " | nc12: " << nc12 << " | x2: " << x2 << endl;
 
     // calculate the traffic weighting
     double mu = alpha * x1 + (1 - alpha) * x2;
+    log_tsr << "mu: " << mu << endl;
     // calculate the correlator
     e = (n01 + n02) - (n11 + n12);
-    double nextInterval = wakeupInterval + (mu + e) * sysClock;
+    log_tsr << "e: " << e << endl;
+    double nextInterval = wakeupInterval + (mu) * 100 * (3/4) * sysClock;
+    nextInterval = ceil(nextInterval * 1000) / 1000;
+    log_tsr << "nextInterval: " << nextInterval << endl;
 
     return nextInterval;
 }
@@ -612,10 +638,14 @@ void TADMacLayer::handleSelfMsg(cMessage *msg) {
 
 void TADMacLayer::sendDataPacket() {
     nbTxDataPackets++;
-    macpkt_ptr_t pkt = macQueue.front()->dup();
+    macpkt_ptr_t pkt = new MacPkt();
+    pkt->setSrcAddr(myMacAddr);
+    pkt->setDestAddr(MACAddress::UNSPECIFIED_ADDRESS);
+//    macpkt_ptr_t pkt = macQueue.front()->dup();
     lastDataPktDestAddr = pkt->getDestAddr();
     pkt->setKind(TADMAC_DATA);
-
+    pkt->setByteLength(16);
+    pkt->setSequenceId(floor(simTime() * 1000));
     attachSignal(pkt);
     sendDown(pkt);
 }
@@ -657,7 +687,7 @@ void TADMacLayer::handleLowerControl(cMessage *msg) {
 //        }
 
     } else {
-        cout << this->getNode()->getIndex() << "-control message with wrong kind -- deleting\n";
+        debugEV << "control message with wrong kind -- deleting\n";
     }
     delete msg;
 }
@@ -669,13 +699,13 @@ void TADMacLayer::handleLowerControl(cMessage *msg) {
 bool TADMacLayer::addToQueue(cMessage *msg) {
     if (macQueue.size() >= queueLength) {
         // queue is full, message has to be deleted
-        cout << this->getNode()->getIndex() << "-New packet arrived, but queue is FULL, so new packet is"
+        debugEV << "New packet arrived, but queue is FULL, so new packet is"
                 " deleted\n";
-        msg->setName("MAC ERROR");
-        msg->setKind(PACKET_DROPPED);
-        sendControlUp(msg);
-        droppedPacket.setReason(DroppedPacket::QUEUE);
-        emit(BaseLayer::catDroppedPacketSignal, &droppedPacket);
+//        msg->setName("MAC ERROR");
+//        msg->setKind(PACKET_DROPPED);
+//        sendControlUp(msg);
+//        droppedPacket.setReason(DroppedPacket::QUEUE);
+//        emit(BaseLayer::catDroppedPacketSignal, &droppedPacket);
         nbDroppedDataPackets++;
 
         return false;
@@ -695,7 +725,7 @@ bool TADMacLayer::addToQueue(cMessage *msg) {
     macPkt->encapsulate(static_cast<cPacket*>(msg));
 
     macQueue.push_back(macPkt);
-    cout << this->getNode()->getIndex() << "-Max queue length: " << queueLength << ", packet put in queue"
+    debugEV << "Max queue length: " << queueLength << ", packet put in queue"
             "\n  queue size: " << macQueue.size() << " macState: " << macState
                    << endl;
     return true;
