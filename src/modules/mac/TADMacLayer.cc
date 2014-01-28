@@ -46,6 +46,7 @@ void TADMacLayer::initialize(int stage) {
         waitDATA = hasPar("waitDATA") ? par("waitDATA") : 0.3;
         sysClock = hasPar("sysClock") ? par("sysClock") : 0.001;
         alpha = hasPar("alpha") ? par("alpha") : 0.5;
+        useCorrection = hasPar("useCorrection") ? par("useCorrection") : true;
 
         queueLength = hasPar("queueLength") ? par("queueLength") : 10;
         animation = hasPar("animation") ? par("animation") : true;
@@ -302,7 +303,7 @@ void TADMacLayer::handleSelfMsgSender(cMessage *msg) {
                 }
                 scheduleAt(start + wakeupInterval, wakeup);
                 // log the time wait for WB
-                log_wb << simTime() << "," << simTime() - startWaitWB << endl;
+                log_wb << start << "," << simTime() - startWaitWB << "," << 0 << endl;
                 return;
             }
             // duration the WAIT_WB, received the WB message -> change to CCA state & schedule the timeout event
@@ -315,7 +316,7 @@ void TADMacLayer::handleSelfMsgSender(cMessage *msg) {
                 // schedule the CCA timeout event
                 scheduleAt(simTime() + waitCCA, ccaTimeout);
                 // log the time wait for WB
-                log_wb << simTime() << "," << simTime() - startWaitWB << endl;
+                log_wb << start << "," << simTime() - startWaitWB << "," << 1 << endl;
                 return;
             }
             break;
@@ -434,7 +435,7 @@ void TADMacLayer::handleSelfMsgReceiver(cMessage *msg) {
                 // schedule the event wait WB timeout
                 start = simTime();
                 scheduleAt(start + waitCCA, ccaWBTimeout);
-                log_wakeupInterval << floor(start * 1000) << "," << floor(wakeupInterval * 1000) << endl;
+                log_wakeupInterval << round(start.dbl() * 1000) << "," << round(wakeupInterval * 1000) << endl;
                 return;
             }
             break;
@@ -612,50 +613,54 @@ void TADMacLayer::calculateNextInterval(cMessage *msg) {
     // calculate the traffic weighting
     double mu = alpha * x1 + (1 - alpha) * x2;
     log_tsr << "mu: " << mu << endl;
-    // calculate the correlator see code matlab in IWCLD_11/First_paper/Adaptive_MAC/Done_Codes/Test_For_IWCLD.m
-    if (mu * 100 == 0) {
-        double idle = 0;
-        if (msg != NULL) {
-            macpkttad_ptr_t mac  = static_cast<macpkttad_ptr_t>(msg);
-            idle = double(mac->getIdle()) / 1000.0;
-            delete mac;
-            mac = NULL;
-            idle_array[idx] = idle;
-            idx++;
-        }
-        if (idle_array[0] != 0 && idle_array[1] != 0) {
-            double WUInt_diff = (idle_array[0] - idle_array[1]) / 2;
-            wakeupIntervalLook = wakeupInterval + WUInt_diff;
-            wakeupInterval = (wakeupIntervalLook - idle);
-            if (wakeupInterval < 0) {
-                wakeupInterval += wakeupIntervalLook;
+    if (useCorrection) {
+        // calculate the correlator see code matlab in IWCLD_11/First_paper/Adaptive_MAC/Done_Codes/Test_For_IWCLD.m
+        if (mu * 100 == 0) {
+            double idle = 0;
+            if (msg != NULL) {
+                macpkttad_ptr_t mac  = static_cast<macpkttad_ptr_t>(msg);
+                idle = double(mac->getIdle()) / 1000.0;
+                delete mac;
+                mac = NULL;
+                idle_array[idx] = idle;
+                idx++;
             }
-            if (wakeupInterval < 0.05) {
-                wakeupInterval = 0.05;
+            if (idle_array[0] != 0 && idle_array[1] != 0) {
+                double WUInt_diff = (idle_array[0] - idle_array[1]) / 2;
+                wakeupIntervalLook = wakeupInterval + WUInt_diff;
+                wakeupInterval = (wakeupIntervalLook - idle);
+                if (wakeupInterval < 0) {
+                    wakeupInterval += wakeupIntervalLook;
+                }
+                if (wakeupInterval < 0.05) {
+                    wakeupInterval = 0.05;
+                }
+                first_time++;
+                idle_array[0] = idle_array[1] = 0;
             }
-            first_time++;
-            idle_array[0] = idle_array[1] = 0;
-        }
-    } else {
-        if (idx == 1) {
-            idx--;
-        }
-        if (wakeupIntervalLook * 100 == 0) {
-            wakeupInterval += mu * 75 * sysClock;
-            wakeupInterval = ceil(wakeupInterval * 1000.0) / 1000.0;
         } else {
-            wakeupInterval = wakeupIntervalLook;
+            if (idx == 1) {
+                idx--;
+            }
+            if (wakeupIntervalLook * 100 == 0) {
+                wakeupInterval += mu * 75 * sysClock;
+                wakeupInterval = round(wakeupInterval * 1000.0) / 1000.0;
+            } else {
+                wakeupInterval = wakeupIntervalLook;
+            }
         }
-    }
 
-    if (first_time == 2) {
-        first_time++;
-    } else {
-        if (first_time == 3) {
-            wakeupInterval = wakeupIntervalLook;
-            wakeupIntervalLook = 0;
+        if (first_time == 2) {
             first_time++;
+        } else {
+            if (first_time == 3) {
+                wakeupInterval = wakeupIntervalLook;
+                first_time++;
+            }
         }
+    } else {
+        wakeupInterval += mu * 5 * sysClock;
+        wakeupInterval = round(wakeupInterval * 1000.0) / 1000.0;
     }
     log_tsr << "nextInterval: " << wakeupInterval << endl;
 }

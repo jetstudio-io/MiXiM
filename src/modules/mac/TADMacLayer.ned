@@ -67,6 +67,8 @@ simple TADMacLayer extends BaseMacLayer
 		// weighting factor
 		double alpha = default(0.5);
 		
+		bool useCorrection = default(true);
+		
 		string logFileName = default("log.csv");
 		
         // debug switch
