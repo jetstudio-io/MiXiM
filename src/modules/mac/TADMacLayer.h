@@ -84,7 +84,7 @@ public:
                     lastDataPktSrcAddr(), lastDataPktDestAddr(),
                     txAttempts(0), droppedPacket(), nicId(-1), queueLength(0), animation(false),
                     bitrate(0), txPower(0),
-                    useMacAcks(0), maxTxAttempts(0), stats(false), idx(0), first_time(0), wakeupIntervalLook(0),
+                    useMacAcks(0), maxTxAttempts(0), stats(false), idx(0), first_time(1), wakeupIntervalLook(0),
                     logFileName("log.csv")
     {}
 

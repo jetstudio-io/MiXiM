@@ -78,6 +78,8 @@ void TADMacLayer::initialize(int stage) {
         nicId = getNic()->getId();
         WATCH(macState);
     } else if (stage == 1) {
+        cPar fileNamePtr = par("logFileName");
+
         startTADMAC = new cMessage("startTADMAC");
         startTADMAC->setKind(TADMAC_START);
 
@@ -126,15 +128,16 @@ void TADMacLayer::initialize(int stage) {
         sentACK->setKind(TADMAC_SENT_ACK);
 
         if (role == NODE_RECEIVER) {
-            log_wakeupInterval.open(logFileName);
+            log_wakeupInterval.open(fileNamePtr.stringValue());
             log_tsr.open("results/tsr.txt");
         } else {
-            log_wb.open(logFileName);
+            log_wb.open(fileNamePtr.stringValue());
         }
         cout << wakeupInterval << endl;
         wakeupInterval /= 1000;
         cout << wakeupInterval << endl;
 
+        idle_array[0] = idle_array[1] = 0;
         TSR_length = 4;
 
         for (int i = 0; i < TSR_length; i++) {
@@ -494,17 +497,15 @@ void TADMacLayer::handleSelfMsgReceiver(cMessage *msg) {
                 const LAddress::L2Type& src  = mac->getSrcAddr();
                 if ((dest == myMacAddr) || LAddress::isL2Broadcast(dest)) {
 //                    sendUp(decapsMsg(mac));
+                    cancelEvent(waitDATATimeout);
                 } else {
                     delete msg;
                     msg = NULL;
                     mac = NULL;
                 }
 
-                cancelEvent(waitDATATimeout);
-
                 // Calculate next wakeup interval
                 calculateNextInterval(msg);
-
                 if ((useMacAcks) && (dest == myMacAddr))
                 {
                     debugEV << "State WAIT_DATA, message TADMAC_DATA, new state"
@@ -612,35 +613,38 @@ void TADMacLayer::calculateNextInterval(cMessage *msg) {
     double mu = alpha * x1 + (1 - alpha) * x2;
     log_tsr << "mu: " << mu << endl;
     // calculate the correlator see code matlab in IWCLD_11/First_paper/Adaptive_MAC/Done_Codes/Test_For_IWCLD.m
-    if (mu * 10 == 0) {
+    if (mu * 100 == 0) {
+        double idle = 0;
         if (msg != NULL) {
             macpkttad_ptr_t mac  = static_cast<macpkttad_ptr_t>(msg);
-            double idle = mac->getIdle() / 1000;
+            idle = double(mac->getIdle()) / 1000.0;
             delete mac;
             mac = NULL;
             idle_array[idx] = idle;
             idx++;
-
-            if (idle_array[0] != 0 && idle_array[1] != 0) {
-                double WUInt_diff = (idle_array[1] - idle_array[0]) / 2;
-                wakeupIntervalLook = wakeupInterval + WUInt_diff;
-                wakeupInterval = (wakeupIntervalLook - idle);
-                if (wakeupInterval < 0) {
-                    wakeupInterval += wakeupIntervalLook;
-                }
-                first_time++;
-                idle_array[0] = idle_array[1] = 0;
+        }
+        if (idle_array[0] != 0 && idle_array[1] != 0) {
+            double WUInt_diff = (idle_array[0] - idle_array[1]) / 2;
+            wakeupIntervalLook = wakeupInterval + WUInt_diff;
+            wakeupInterval = (wakeupIntervalLook - idle);
+            if (wakeupInterval < 0) {
+                wakeupInterval += wakeupIntervalLook;
             }
+            if (wakeupInterval < 0.05) {
+                wakeupInterval = 0.05;
+            }
+            first_time++;
+            idle_array[0] = idle_array[1] = 0;
         }
     } else {
         if (idx == 1) {
             idx--;
         }
-        if (wakeupIntervalLook == 0) {
+        if (wakeupIntervalLook * 100 == 0) {
             wakeupInterval += mu * 75 * sysClock;
-            wakeupInterval = ceil(wakeupInterval * 1000) / 1000;
+            wakeupInterval = ceil(wakeupInterval * 1000.0) / 1000.0;
         } else {
-            wakeupInterval = wakeupIntervalLook / 1000;
+            wakeupInterval = wakeupIntervalLook;
         }
     }
 
@@ -650,10 +654,9 @@ void TADMacLayer::calculateNextInterval(cMessage *msg) {
         if (first_time == 3) {
             wakeupInterval = wakeupIntervalLook;
             wakeupIntervalLook = 0;
+            first_time++;
         }
     }
-    e = (n01 + n02) - (n11 + n12);
-    log_tsr << "e: " << e << endl;
     log_tsr << "nextInterval: " << wakeupInterval << endl;
 }
 
