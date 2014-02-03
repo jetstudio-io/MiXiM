@@ -66,7 +66,7 @@ public:
                     txAttempts(0), droppedPacket(), nicId(-1), queueLength(0), animation(false),
                     bitrate(0), txPower(0),
                     useMacAcks(0), maxTxAttempts(0), stats(false), idx(0), first_time(1), wakeupIntervalLook(0),
-                    logFileName("log.csv"), useCorrection(true)
+                    logFileName("log.csv"), useCorrection(true), numberSender(1), numberWakeup(0)
     {}
 
     typedef MacPktTAD* macpkttad_ptr_t;
@@ -131,7 +131,7 @@ protected:
     };
     ROLES role;
 
-    int TSR[16];
+    int *TSR[16];
     int TSR_length;
     /** @brief store the moment wakeup, will be used to calculate the rest time */
     simtime_t start;
@@ -268,7 +268,7 @@ protected:
     bool addToQueue(cMessage * msg);
 
     /** @brief Calculate the next wakeup interval*/
-    void calculateNextInterval(cMessage *msg=NULL);
+    void calculateNextInterval(int senderIdx = 1, cMessage *msg=NULL);
 
     /**
      * These variables used for calculate the error correlator.
@@ -280,6 +280,9 @@ protected:
 
     char *logFileName;
     bool useCorrection;
+
+    int numberSender;
+    int numberWakeup;
 };
 
 #endif /* TADMACLAYER_H_ */

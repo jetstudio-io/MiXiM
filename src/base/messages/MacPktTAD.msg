@@ -32,4 +32,5 @@ packet MacPktTAD extends MacPkt
 //    LAddress::L2Type srcAddr;  // source mac address
 //    long             sequenceId; // Sequence Number to detect duplicate messages
 	long			idle;  // The idle time that this node waited WB from receiver before send data
+	int				nodeIdx; // The idx of sender - used to calculate in receiver
 }

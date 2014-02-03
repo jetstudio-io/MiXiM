@@ -76,6 +76,9 @@ simple TADMacLayer extends BaseMacLayer
 		
 		string logFileName = default("log.csv");
 		
+		// used for receiver to handle multi senders
+		int numberSender = default(1);
+		
         // debug switch
         bool debug = default(false);
         //collect statistics?
