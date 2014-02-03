@@ -13,6 +13,10 @@
 // along with this program.  If not, see http://www.gnu.org/licenses/.
 // 
 
+/**
+ * Version 1.1: support multi senders
+ */
+
 #include "TADMacLayer.h"
 
 #include <cassert>

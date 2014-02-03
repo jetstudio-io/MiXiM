@@ -13,6 +13,10 @@
 // along with this program.  If not, see http://www.gnu.org/licenses/.
 // 
 
+/**
+ * Version 1.1: support multi senders
+ */
+
 #ifndef TADMACLAYER_H_
 #define TADMACLAYER_H_
 
@@ -32,32 +36,9 @@ using namespace std;
 class MacPktTAD;
 
 /**
- * @brief Implementation of B-MAC (called also Berkeley MAC, Low Power
- * Listening or LPL).
- *
- * The protocol works as follows: each node is allowed to sleep for
- * slotDuration. After waking up, it first checks the channel for ongoing
- * transmissions.
- * If a transmission is catched (a preamble is received), the node stays awake
- * for at most slotDuration and waits for the actual data packet.
- * If a node wants to send a packet, it first sends preambles for at least
- * slotDuration, thus waking up all nodes in its transmission radius and
- * then sends out the data packet. If a mac-level ack is required, then the
- * receiver sends the ack immediately after receiving the packet (no preambles)
- * and the sender waits for some time more before going back to sleep.
- *
- * B-MAC is designed for low traffic, low power communication in WSN and is one
- * of the most widely used protocols (e.g. it is part of TinyOS).
- * The finite state machine of the protocol is given in the below figure:
- *
- * \image html BMACFSM.png "B-MAC Layer - finite state machine"
- *
- * A paper describing this implementation can be found at:
- * http://www.omnet-workshop.org/2011/uploads/slides/OMNeT_WS2011_S5_C1_Foerster.pdf
- *
  * @class TADMacLayer
  * @ingroup macLayer
- * @author Anna Foerster
+ * @author Nguyen Van Thiep
  *
  */
 class MIXIM_API TADMacLayer: public BaseMacLayer {

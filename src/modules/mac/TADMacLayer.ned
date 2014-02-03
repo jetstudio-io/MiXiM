@@ -38,6 +38,11 @@ import org.mixim.base.modules.BaseMacLayer;
 // Implementation of TAD-MAC (called also Traffic-Aware Dynamic MAC.
 // See C++ documentation for details.
 //
+
+//****************
+// Version 1.1: support multi senders
+//****************
+
 simple TADMacLayer extends BaseMacLayer
 {
     parameters:
