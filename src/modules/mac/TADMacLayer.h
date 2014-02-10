@@ -66,7 +66,7 @@ public:
                     txAttempts(0), droppedPacket(), nicId(-1), queueLength(0), animation(false),
                     bitrate(0), txPower(0),
                     useMacAcks(0), maxTxAttempts(0), stats(false), idx(0), first_time(1), wakeupIntervalLook(0),
-                    logFileName("log.csv"), useCorrection(true)
+                    logFileName("log.csv"), useCorrection(true), numberWakeup(0), sysClockFactor(75)
     {}
 
     typedef MacPktTAD* macpkttad_ptr_t;
@@ -136,7 +136,7 @@ protected:
     /** @brief store the moment wakeup, will be used to calculate the rest time */
     simtime_t start;
     /** store the moment the sender wait for WB */
-    simtime_t startWaitWB;
+    simtime_t timeWaitWB;
 
     double wakeupInterval;
     double waitCCA;
@@ -280,6 +280,8 @@ protected:
 
     char *logFileName;
     bool useCorrection;
+    int numberWakeup;
+    int sysClockFactor;
 };
 
 #endif /* TADMACLAYER_H_ */

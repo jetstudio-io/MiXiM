@@ -69,6 +69,8 @@ simple TADMacLayer extends BaseMacLayer
 		double waitDATA @unit(s) = default(0.3s);
 		// system clock - we calculate by 1ms
 		double sysClock @unit(s) = default(0.001s);
+		// system clock - we calculate by 1ms
+		int sysClockFactor = default(75);
 		// weighting factor
 		double alpha = default(0.5);
 		
