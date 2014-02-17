@@ -55,7 +55,7 @@ public:
             BaseMacLayer(), macQueue(), nbTxDataPackets(0), nbTxWB(0), nbRxDataPackets(0),
                     nbRxWB(0), nbMissedAcks(0), nbRecvdAcks(0), nbDroppedDataPackets(0),
                     nbTxAcks(0),
-                    TSR_length(16), wakeupInterval(1), waitCCA(0.1), waitWB(0.3),
+                    TSR_length(16), wakeupInterval(0.5), waitCCA(0.1), waitWB(0.3),
                     waitACK(0.3), waitDATA(0.3), sysClock(0.001), alpha(0.5),
                     macState(INIT), startTADMAC(NULL), wakeup(NULL),
                     waitWBTimeout(NULL), receivedWB(NULL), ccaTimeout(NULL), sentData(NULL),
@@ -66,7 +66,7 @@ public:
                     txAttempts(0), droppedPacket(), nicId(-1), queueLength(0), animation(false),
                     bitrate(0), txPower(0),
                     useMacAcks(0), maxTxAttempts(0), stats(false), idx(0), first_time(1), wakeupIntervalLook(0),
-                    logFileName("log.csv"), useCorrection(true), numberWakeup(0), sysClockFactor(75)
+                    logFileName("log.csv"), useCorrection(true), numberWakeup(0), sysClockFactor(75), numberSender(1)
     {}
 
     typedef MacPktTAD* macpkttad_ptr_t;
@@ -282,6 +282,9 @@ protected:
     bool useCorrection;
     int numberWakeup;
     int sysClockFactor;
+
+    int numberSender;
+    int currentNode;
 };
 
 #endif /* TADMACLAYER_H_ */

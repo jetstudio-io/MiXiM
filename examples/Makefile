@@ -2,7 +2,7 @@
 # OMNeT++/OMNEST Makefile for miximexamples
 #
 # This file was generated with the command:
-#  opp_makemake -f --deep -o miximexamples -O out -I../src/base/modules -I../src/inet_stub/networklayer/common -I../src -I../src/modules/utility -I../src/base/utils -I../src/inet_stub/mobility/models -I../src/modules/phy -I../src/base -I../src/base/phyLayer -I../src/inet_stub/mobility -I../src/inet_stub/util -I../src/modules/analogueModel -I../src/modules/messages -I../src/base/connectionManager -I../src/inet_stub/linklayer/contract -I../src/inet_stub/base -I../src/base/messages -I../src/modules -L../out/$(CONFIGNAME)/src -lmixim -DWITH_MIXIM_EXAMPLES -DMIXIM_INET
+#  opp_makemake -f --deep -o miximexamples -O out -I../src/base/modules -I../src/inet_stub/networklayer/common -I../src -I../src/modules/utility -I../src/base/utils -I../src/inet_stub/mobility/models -I../src/modules/phy -I../src/base -I../src/base/phyLayer -I../src/inet_stub/mobility -I../src/inet_stub/util -I../src/modules/analogueModel -I../src/modules/messages -I../src/base/connectionManager -I../src/inet_stub/linklayer/contract -I../src/inet_stub/base -I../src/base/messages -I../src/modules -L../out/$$\(CONFIGNAME\)/src -lmixim -DWITH_MIXIM_EXAMPLES -DMIXIM_INET
 #
 
 # Name of target to be created (-o option)
@@ -135,7 +135,7 @@ $O/$(TARGET): $(OBJS)  $(wildcard $(EXTRA_OBJS)) Makefile
 $O/%.o: %.cc $(COPTS_FILE)
 	@$(MKPATH) $(dir $@)
 	$(qecho) "$<"
-	$(Q)$(CXX) -c $(COPTS) -o $@ $<
+	$(Q)$(CXX) -c $(CXXFLAGS) $(COPTS) -o $@ $<
 
 %_m.cc %_m.h: %.msg
 	$(qecho) MSGC: $<

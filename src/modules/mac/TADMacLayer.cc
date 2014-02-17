@@ -43,7 +43,7 @@ void TADMacLayer::initialize(int stage) {
         /* get sepecific parameters for TADMAC */
         role = static_cast<ROLES>(hasPar("role") ? par("role") : 1);
 
-        wakeupInterval = hasPar("WUInterval") ? par("WUInterval") : 1;
+        wakeupInterval = hasPar("WUIInit") ? par("WUIInit") : 0.5;
         waitCCA = hasPar("waitCCA") ? par("waitCCA") : 0.1;
         waitWB = hasPar("waitWB") ? par("waitWB") : 0.3;
         waitACK = hasPar("waitACK") ? par("waitACK") : 0.3;
@@ -83,7 +83,6 @@ void TADMacLayer::initialize(int stage) {
         droppedPacket.setReason(DroppedPacket::NONE);
         nicId = getNic()->getId();
         WATCH(macState);
-        cout << sysClock << endl;
     } else if (stage == 1) {
         cPar fileNamePtr = par("logFileName");
 
@@ -140,7 +139,8 @@ void TADMacLayer::initialize(int stage) {
         } else {
             log_wb.open(fileNamePtr.stringValue());
         }
-        wakeupInterval /= 1000;
+//        cout << wakeupInterval << endl;
+//        wakeupInterval /= 1000;
 
         idle_array[0] = idle_array[1] = 0;
         TSR_length = 4;

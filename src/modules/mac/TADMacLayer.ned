@@ -57,8 +57,6 @@ simple TADMacLayer extends BaseMacLayer
 		// 2 - transmiter : will be implemented later
 		int role = default(1);
 		
-		// wake up interval for each node - used in receiver only because in sender, node wake up when it has data to send
-		double WUInterval = default(1);
 		// time for CCA
 		double waitCCA @unit(s) = default(0.1s);
 		// time to wait WB - used on sender only because receiver send WB
@@ -70,13 +68,19 @@ simple TADMacLayer extends BaseMacLayer
 		// system clock - we calculate by 1ms
 		double sysClock @unit(s) = default(0.001s);
 		// system clock - we calculate by 1ms
-		int sysClockFactor = default(75);
+		int sysClockFactor = default(1);
 		// weighting factor
 		double alpha = default(0.5);
+		// wake up interval for each node - used in receiver only because in sender, node wake up when it has data to send
+		double WUIInit @unit(s) = default(0.5s);
 		
 		bool useCorrection = default(true);
 		
 		string logFileName = default("log.csv");
+		
+		int numberSender = default(1);
+		
+		string nodeAddress;
 		
         // debug switch
         bool debug = default(false);
