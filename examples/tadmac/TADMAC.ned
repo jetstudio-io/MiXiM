@@ -22,7 +22,6 @@ network TADMACExampleNetwork extends BaseNetwork
 {
     parameters:
         int numNodes; // total number of hosts in the network
-        **.nic.mac.role = default(1);
 
     submodules:
         node[numNodes]: HostTADMAC {

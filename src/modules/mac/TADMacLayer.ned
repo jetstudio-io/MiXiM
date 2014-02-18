@@ -35,7 +35,7 @@ package org.mixim.modules.mac;
 import org.mixim.base.modules.BaseMacLayer;
 
 //
-// Implementation of TAD-MAC (called also Traffic-Aware Dynamic MAC.
+// Implementation of TAD-MAC (called also Traffic-Aware Dynamic MAC).
 // See C++ documentation for details.
 //
 
@@ -78,11 +78,10 @@ simple TADMacLayer extends BaseMacLayer
 		
 		string logFileName = default("log.csv");
 		
+		// used to define number sender in network - for receiver node
 		int numberSender = default(1);
 		
-		string nodeAddress;
-		
-        // debug switch
+		// debug switch
         bool debug = default(false);
         //collect statistics?
         bool stats = default(true);
@@ -104,5 +103,5 @@ simple TADMacLayer extends BaseMacLayer
         bool useMACAcks = default(true);
         // maximum number of frame retransmission
         // only used when usage of MAC acks is enabled
-        int macMaxFrameRetries = default(3);        
+        int macMaxFrameRetries = default(3);
 }

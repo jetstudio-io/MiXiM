@@ -142,6 +142,15 @@ void TADMacLayer::initialize(int stage) {
 //        cout << wakeupInterval << endl;
 //        wakeupInterval /= 1000;
 
+        /**
+         * Define route table here. Because we don't use high level so we need to fix the network topologie
+         * node[0] is receiver, mac address is 00:00:00:00:00:00
+         * node[1->4] is sender, mac address is from 00:00:00:00:00:01 to 00:00:00:00:00:04
+         */
+        if (this->getNode()->getIndex() == 0) {
+
+        }
+
         idle_array[0] = idle_array[1] = 0;
         TSR_length = 4;
 
@@ -204,6 +213,7 @@ void TADMacLayer::finish() {
  * nothing, if node is working.
  */
 void TADMacLayer::handleUpperMsg(cMessage *msg) {
+    delete msg;
     return;
     if (role == NODE_RECEIVER) {
         return;

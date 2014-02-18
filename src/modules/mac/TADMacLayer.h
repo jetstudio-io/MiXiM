@@ -285,6 +285,8 @@ protected:
 
     int numberSender;
     int currentNode;
+    double *nodeWakeupInterval;
+    double *nodeIdle;
 };
 
 #endif /* TADMACLAYER_H_ */
