@@ -3,15 +3,15 @@
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
-// 
+//
 // This program is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
-// 
+//
 // You should have received a copy of the GNU Lesser General Public License
 // along with this program.  If not, see http://www.gnu.org/licenses/.
-// 
+//
 
 /**
  * Version 1.1: support multi senders
@@ -103,7 +103,7 @@ protected:
     //used to log wait duration for wakeup beacon from receiver in sender
     ofstream log_wb;
     //
-    ofstream log_tsr;
+//    ofstream log_tsr;
 
     typedef std::list<macpkt_ptr_t> MacQueue;
 
@@ -283,10 +283,24 @@ protected:
     int numberWakeup;
     int sysClockFactor;
 
+    /**
+     * Define variable for multi sender
+     */
     int numberSender;
     int currentNode;
     double *nodeWakeupInterval;
-    double *nodeIdle;
+    simtime_t *nextWakeupTime;
+    int **nodeIdle;
+    int *nodeIndex;
+    int **TSR_bank;
+    int *nodeNumberWakeup;
+    LAddress::L2Type *routeTable;
+    LAddress::L2Type receiverAddress;
+
+    const int maxCCAattempts = 2;
+    int ccaAttempts;
+
+    ofstream *logFile;
 };
 
 #endif /* TADMACLAYER_H_ */

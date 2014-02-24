@@ -77,7 +77,6 @@ simple TADMacLayer extends BaseMacLayer
 		bool useCorrection = default(true);
 		
 		string logFileName = default("log.csv");
-		
 		// used to define number sender in network - for receiver node
 		int numberSender = default(1);
 		

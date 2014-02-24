@@ -26,6 +26,6 @@ network TADMACExampleNetwork extends BaseNetwork
     submodules:
         node[numNodes]: HostTADMAC {
             parameters:
-                @display("p=170,50;i=device/wifilaptop");
+                @display("p=159,39;i=device/wifilaptop_vs;b=19,19");
         }
 }
