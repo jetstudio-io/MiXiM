@@ -65,8 +65,9 @@ public:
                     lastDataPktSrcAddr(), lastDataPktDestAddr(),
                     txAttempts(0), droppedPacket(), nicId(-1), queueLength(0), animation(false),
                     bitrate(0), txPower(0),
-                    useMacAcks(0), maxTxAttempts(0), stats(false), idx(0), first_time(1), wakeupIntervalLook(0),
-                    logFileName("log.csv"), useCorrection(true), numberWakeup(0), sysClockFactor(75), numberSender(1)
+                    useMacAcks(0), maxTxAttempts(0), stats(false), first_time(1), wakeupIntervalLook(0),
+                    logFileName("log.csv"), useCorrection(true), numberWakeup(0), sysClockFactor(75), numberSender(1),
+                    startAt(0.001)
     {}
 
     typedef MacPktTAD* macpkttad_ptr_t;
@@ -98,13 +99,6 @@ public:
     virtual void handleLowerControl(cMessage *msg);
 
 protected:
-    //used to log interval value in receiver
-    ofstream log_wakeupInterval;
-    //used to log wait duration for wakeup beacon from receiver in sender
-    ofstream log_wb;
-    //
-//    ofstream log_tsr;
-
     typedef std::list<macpkt_ptr_t> MacQueue;
 
     /** @brief A queue to store packets from upper layer in case another
@@ -273,12 +267,12 @@ protected:
     /**
      * These variables used for calculate the error correlator.
      */
-    int idx;
+    int index;
     int first_time;
     double idle_array[2];
     double wakeupIntervalLook;
 
-    char *logFileName;
+    const char *logFileName;
     bool useCorrection;
     int numberWakeup;
     int sysClockFactor;
@@ -289,8 +283,10 @@ protected:
     int numberSender;
     int currentNode;
     double *nodeWakeupInterval;
+    double *nodeWakeupIntervalLock;
+    int *nodeFirstTime;
     simtime_t *nextWakeupTime;
-    int **nodeIdle;
+    double **nodeIdle;
     int *nodeIndex;
     int **TSR_bank;
     int *nodeNumberWakeup;
@@ -299,8 +295,14 @@ protected:
 
     const int maxCCAattempts = 2;
     int ccaAttempts;
+    double startAt;
+    int wbMiss;
 
-    ofstream *logFile;
+    ofstream logFile;
+    ofstream log_tsr;
+
+    void scheduleNextWakeup();
+    void writeLog();
 };
 
 #endif /* TADMACLAYER_H_ */

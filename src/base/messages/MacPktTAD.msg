@@ -31,5 +31,6 @@ packet MacPktTAD extends MacPkt
 //    LAddress::L2Type destAddr; // destination mac address
 //    LAddress::L2Type srcAddr;  // source mac address
 //    long             sequenceId; // Sequence Number to detect duplicate messages
-	long			idle;  // The idle time that this node waited WB from receiver before send data
+	long           idle;  // The idle time that this node waited WB from receiver before send data
+	int            wbMiss;  // The number wake up without receipt WB
 }

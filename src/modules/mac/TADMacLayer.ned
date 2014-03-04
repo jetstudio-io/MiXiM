@@ -79,6 +79,8 @@ simple TADMacLayer extends BaseMacLayer
 		string logFileName = default("log.csv");
 		// used to define number sender in network - for receiver node
 		int numberSender = default(1);
+		// moment sender start - to avoid 2 node always wakeup in same time
+		double startAt @unit(s) = default(0.001s);
 		
 		// debug switch
         bool debug = default(false);
