@@ -290,10 +290,11 @@ protected:
     int *nodeIndex;
     int **TSR_bank;
     int *nodeNumberWakeup;
+    int *nodePriority;
     LAddress::L2Type *routeTable;
     LAddress::L2Type receiverAddress;
 
-    const int maxCCAattempts = 2;
+    static const int maxCCAattempts = 2;
     int ccaAttempts;
     double startAt;
     int wbMiss;

@@ -189,7 +189,9 @@ void TADMacLayer::initialize(int stage) {
             nodeIndex = new int[numberSender+1];
             nodeNumberWakeup = new int[numberSender+1];
             nodeFirstTime = new int[numberSender+1];
+            nodePriority = new int[numberSender+1];
             for (int i = 1; i <= numberSender; i++) {
+                nodePriority[i] = 0;
                 nodeIndex[i] = 0;
                 nodeNumberWakeup[i] = 0;
                 nodeFirstTime[i] = 1;
@@ -321,17 +323,35 @@ void TADMacLayer::scheduleNextWakeup() {
     macState = SLEEP;
     // find the next wakeup time
     simtime_t nextWakeup = 1000.0;
+    currentNode = 0;
     for (int i = 1; i <= numberSender; i++) {
         // Check if already passed the wakeup time for a node
+        debugEV << nextWakeup << "-" << nextWakeupTime[i] << "-" << currentNode <<endl;
         if (nextWakeupTime[i] < simTime()) {
             nextWakeupTime[i] += ceil((simTime() - nextWakeupTime[i]) / nodeWakeupInterval[i]) * nodeWakeupInterval[i];
 //            nextWakeupTime[i] += nodeWakeupInterval[i];
         }
         if (nextWakeup > nextWakeupTime[i]) {
+            // Althought the node i need to wakeup before current node
+            // but its priority is lower than current node so we don't choose this node
+            if ((nextWakeup < nextWakeupTime[i] + waitCCA + waitDATA + sysClock) && (nodePriority[i] < nodePriority[currentNode])) {
+                nodePriority[i]++;
+            } else {
+                nodePriority[currentNode]++;
+                nextWakeup = nextWakeupTime[i];
+                currentNode = i;
+            }
+        } else if ((nextWakeupTime[i] < nextWakeup + waitCCA + waitDATA + sysClock) && (nodePriority[i] > nodePriority[currentNode])) {
+            nodePriority[currentNode]++;
             nextWakeup = nextWakeupTime[i];
             currentNode = i;
+        } else {
+            nodePriority[i]++;
         }
+        debugEV << nextWakeup << "-" << nextWakeupTime[i] << "-" << currentNode <<endl;
     }
+    // reset priority of current node
+    nodePriority[currentNode] = 0;
     scheduleAt(nextWakeup, wakeup);
 }
 
@@ -445,7 +465,7 @@ void TADMacLayer::handleSelfMsgSender(cMessage *msg) {
                 // set antenna to sending sign state
                 phy->setRadioState(MiximRadio::TX);
                 // send the data packet
-                sendDataPacket();
+//                sendDataPacket();
                 // change mac state to send data
                 macState = SEND_DATA;
                 // in this case, we don't need to schedule the event to handle when data is sent
@@ -598,8 +618,7 @@ void TADMacLayer::handleSelfMsgReceiver(cMessage *msg) {
                 changeDisplayColor(YELLOW);
                 // Change antenna to sleep state
                 phy->setRadioState(MiximRadio::TX);
-                // Send WB to sender
-                sendWB();
+                // Send WB to sender - this action will be executed when radio change state successful
                 macState = SEND_WB;
                 // Don't need to schedule sent wb event here, this event will be call when physical layer finish
                 return;
@@ -703,7 +722,7 @@ void TADMacLayer::handleSelfMsgReceiver(cMessage *msg) {
                 debugEV << "State CCA_ACK, message TADMAC_CCA_ACK_TIMEOUT, new state SEND_ACK" << endl;
                 changeDisplayColor(YELLOW);
                 phy->setRadioState(MiximRadio::TX);
-                sendMacAck();
+//                sendMacAck();
                 macState = SEND_ACK;
                 return;
             } else {
@@ -913,20 +932,21 @@ void TADMacLayer::handleLowerControl(cMessage *msg) {
     else if (msg->getKind() == MacToPhyInterface::RADIO_SWITCHING_OVER) {
 //        // we just switched to TX after CCA, so simply send the first
 //        // sendPremable self message
-//        if ((macState == SEND_PREAMBLE)
-//                && (phy->getRadioState() == MiximRadio::TX)) {
-//            scheduleAt(simTime(), send_preamble);
-//        }
-//        if ((macState == SEND_ACK)
-//                && (phy->getRadioState() == MiximRadio::TX)) {
-//            scheduleAt(simTime(), send_ack);
-//        }
+        if ((macState == SEND_WB)
+                && (phy->getRadioState() == MiximRadio::TX)) {
+            // Call action to send WB packet
+            sendWB();
+        }
+        if ((macState == SEND_ACK)
+                && (phy->getRadioState() == MiximRadio::TX)) {
+            sendMacAck();
+        }
 //        // we were waiting for acks, but none came. we switched to TX and now
 //        // need to resend data
-//        if ((macState == SEND_DATA)
-//                && (phy->getRadioState() == MiximRadio::TX)) {
-//            scheduleAt(simTime(), resend_data);
-//        }
+        if ((macState == SEND_DATA)
+                && (phy->getRadioState() == MiximRadio::TX)) {
+            sendDataPacket();
+        }
 
     } else {
         debugEV << "control message with wrong kind -- deleting\n";
