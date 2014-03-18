@@ -75,6 +75,7 @@ simple TADMacLayer extends BaseMacLayer
 		double WUIInit @unit(s) = default(0.5s);
 		
 		bool useCorrection = default(true);
+		bool usePriority = default(true);
 		
 		string logFileName = default("log.csv");
 		// used to define number sender in network - for receiver node

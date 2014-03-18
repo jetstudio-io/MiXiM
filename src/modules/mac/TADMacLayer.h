@@ -274,6 +274,7 @@ protected:
 
     const char *logFileName;
     bool useCorrection;
+    bool usePriority;
     int numberWakeup;
     int sysClockFactor;
 
@@ -304,6 +305,7 @@ protected:
 
     void scheduleNextWakeup();
     void writeLog();
+    void updateTSR(int nodeId, int value);
 };
 
 #endif /* TADMACLAYER_H_ */

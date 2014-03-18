@@ -56,6 +56,7 @@ void TADMacLayer::initialize(int stage) {
         sysClockFactor = hasPar("sysClockFactor") ? par("sysClockFactor") : 75;
         alpha = hasPar("alpha") ? par("alpha") : 0.5;
         useCorrection = hasPar("useCorrection") ? par("useCorrection") : true;
+        usePriority = hasPar("usePriority") ? par("usePriority") : true;
         numberSender = hasPar("numberSender") ? par("numberSender") : 1;
         startAt = hasPar("startAt") ? par("startAt") : 0.001;
         logFileName = par("logFileName").stringValue();
@@ -172,6 +173,7 @@ void TADMacLayer::initialize(int stage) {
                 logFile.open(converter.str().c_str());
                 logFile << "WU Interval for node:" << i + nodeIdx << endl;
                 logFile.close();
+//                cout << routeTable[i] << endl;
             }
             // allocate memory & initialize for nodeWakeupInterval & nextWakeupIntervalTime
             nodeWakeupInterval = new double[numberSender+1];
@@ -181,6 +183,7 @@ void TADMacLayer::initialize(int stage) {
                 nodeWakeupInterval[i] = wakeupInterval;
                 nodeWakeupIntervalLock[i] = 0.0;
                 nextWakeupTime[i] = (rand() % 1000 + 1) / 1000.0;
+//                nextWakeupTime[i] = (100 * i) / 1000.0;
                 //cout << nextWakeupTime[i] << endl;
             }
 
@@ -250,27 +253,11 @@ void TADMacLayer::finish() {
 }
 
 /**
- * Check whether the queue is not full: if yes, print a warning and drop the
- * packet. Then initiate sending of the packet, if the node is sleeping. Do
- * nothing, if node is working.
+ * We don't user upper layer - will be implement after
  */
 void TADMacLayer::handleUpperMsg(cMessage *msg) {
     delete msg;
     msg = NULL;
-    return;
-    if (role == NODE_RECEIVER) {
-        return;
-    }
-    bool pktAdded = addToQueue(msg);
-    if (!pktAdded)
-        return;
-    // force wakeup now - in sender node, we wake up on demand to transmit data
-    if (macState == SLEEP) {
-        if (wakeup->isScheduled()) {
-            cancelEvent(wakeup);
-        }
-        scheduleAt(simTime(), wakeup);
-    }
 }
 
 /**
@@ -322,33 +309,53 @@ void TADMacLayer::scheduleNextWakeup() {
     phy->setRadioState(MiximRadio::SLEEP);
     macState = SLEEP;
     // find the next wakeup time
-    simtime_t nextWakeup = 1000.0;
+    simtime_t nextWakeup = 10000.0;
     currentNode = 0;
     for (int i = 1; i <= numberSender; i++) {
         // Check if already passed the wakeup time for a node
-        debugEV << nextWakeup << "-" << nextWakeupTime[i] << "-" << currentNode <<endl;
         if (nextWakeupTime[i] < simTime()) {
-            nextWakeupTime[i] += ceil((simTime() - nextWakeupTime[i]) / nodeWakeupInterval[i]) * nodeWakeupInterval[i];
-//            nextWakeupTime[i] += nodeWakeupInterval[i];
+//            cout << simTime() << "|" << nextWakeupTime[i] << "|" << i << "|" << nodeWakeupInterval[i] << endl;
+            int tmp = ceil((simTime().dbl() - nextWakeupTime[i].dbl()) / nodeWakeupInterval[i]);
+            nextWakeupTime[i] += tmp * nodeWakeupInterval[i];
+            for (int j = 0; j < tmp; j++) {
+                updateTSR(i, 0);
+            }
+//            cout << simTime() << "|" << nextWakeupTime[i] << "|" << i << "|" << nodeWakeupInterval[i] << endl;
         }
-        if (nextWakeup > nextWakeupTime[i]) {
-            // Althought the node i need to wakeup before current node
-            // but its priority is lower than current node so we don't choose this node
-            if ((nextWakeup < nextWakeupTime[i] + waitCCA + waitDATA + sysClock) && (nodePriority[i] < nodePriority[currentNode])) {
-                nodePriority[i]++;
-            } else {
+        if (usePriority) {
+            if (nextWakeup > nextWakeupTime[i]) {
+                // if 2 wakeup time is too close so we must choose only 1
+                if (nextWakeup < nextWakeupTime[i] + waitCCA + waitDATA + sysClock) {
+                    // the priority of node i is lower than current node so we can't choose node i
+                    // need to increase priority, update nextwakuptime & TSR for node i
+                    if (nodePriority[i] < nodePriority[currentNode]) {
+                        nodePriority[i]++;
+                        nextWakeupTime[i] += nodeWakeupInterval[i];
+                        updateTSR(i, 0);
+                    } else { // choose node i so need to update for current node
+                        nodePriority[currentNode]++;
+                        nextWakeupTime[currentNode] += nodeWakeupInterval[currentNode];
+                        updateTSR(currentNode, 0);
+                        nextWakeup = nextWakeupTime[i];
+                        currentNode = i;
+                    }
+                } else { // current node may can be wakeup later -> don't need to increase priority & update TSR
+                    nextWakeup = nextWakeupTime[i];
+                    currentNode = i;
+                }
+            } else if ((nextWakeupTime[i] < nextWakeup + waitCCA + waitDATA + sysClock) && (nodePriority[i] > nodePriority[currentNode])) {
                 nodePriority[currentNode]++;
+                nextWakeupTime[currentNode] += nodeWakeupInterval[currentNode];
+                updateTSR(currentNode, 0);
                 nextWakeup = nextWakeupTime[i];
                 currentNode = i;
             }
-        } else if ((nextWakeupTime[i] < nextWakeup + waitCCA + waitDATA + sysClock) && (nodePriority[i] > nodePriority[currentNode])) {
-            nodePriority[currentNode]++;
-            nextWakeup = nextWakeupTime[i];
-            currentNode = i;
         } else {
-            nodePriority[i]++;
+            if (nextWakeup > nextWakeupTime[i]) {
+                nextWakeup = nextWakeupTime[i];
+                currentNode = i;
+            }
         }
-        debugEV << nextWakeup << "-" << nextWakeupTime[i] << "-" << currentNode <<endl;
     }
     // reset priority of current node
     nodePriority[currentNode] = 0;
@@ -379,6 +386,9 @@ void TADMacLayer::handleSelfMsgSender(cMessage *msg) {
                 phy->setRadioState(MiximRadio::SLEEP);
                 macState = SLEEP;
                 // Because we have multi sender so we avoid all sender start at same moment
+                double tmp = (rand() % 1000 + 1) / 1000.0;
+                cout << getNode()->getIndex() << ":" << tmp << endl;
+//                scheduleAt(simTime() + tmp, wakeup);
                 scheduleAt(simTime() + startAt, wakeup);
                 return;
             }
@@ -430,6 +440,9 @@ void TADMacLayer::handleSelfMsgSender(cMessage *msg) {
                 const LAddress::L2Type& dest = mac->getDestAddr();
                 // Do nothing if receive WB for other node
                 if (dest != myMacAddr) {
+                    mac = NULL;
+//                    delete msg;
+//                    msg = NULL;
                     return;
                 }
                 //cout << "sender receipt wb" << endl;
@@ -445,15 +458,16 @@ void TADMacLayer::handleSelfMsgSender(cMessage *msg) {
                 timeWaitWB = simTime() - start;
                 // reset ccaAttempts
                 ccaAttempts = 0;
-                delete msg;
-                msg = NULL;
+                mac = NULL;
+//                delete msg;
+//                msg = NULL;
                 logFile << round(timeWaitWB.dbl() * 1000) << "," << wbMiss << endl;
                 return;
             }
             // during this periode, this node receive data packet or ack from other node, do nothing, wait right WB
             if (msg->getKind() == TADMAC_DATA || msg->getKind() == TADMAC_ACK) {
-                delete msg;
-                msg = NULL;
+//                delete msg;
+//                msg = NULL;
                 return;
             }
             break;
@@ -464,7 +478,7 @@ void TADMacLayer::handleSelfMsgSender(cMessage *msg) {
                 changeDisplayColor(YELLOW);
                 // set antenna to sending sign state
                 phy->setRadioState(MiximRadio::TX);
-                // send the data packet
+                // send the data packet - this function will be called in handleLowerControl
 //                sendDataPacket();
                 // change mac state to send data
                 macState = SEND_DATA;
@@ -474,8 +488,8 @@ void TADMacLayer::handleSelfMsgSender(cMessage *msg) {
             }
             // Receive a packet from other node while check channel
             if (msg->getKind() == TADMAC_WB || msg->getKind() == TADMAC_DATA || msg->getKind() == TADMAC_ACK) {
-                delete msg;
-                msg = NULL;
+//                delete msg;
+//                msg = NULL;
                 if (ccaAttempts < maxCCAattempts) {
                     //cout << "sender cca attempts" << endl;
                     ccaAttempts++;
@@ -564,8 +578,8 @@ void TADMacLayer::handleSelfMsgSender(cMessage *msg) {
             }
             if (msg->getKind() == TADMAC_DATA || msg->getKind() == TADMAC_WB) {
                 //cout << "sender receipt other packet" << endl;
-                delete msg;
-                msg = NULL;
+//                delete msg;
+//                msg = NULL;
                 return;
             }
             break;
@@ -633,11 +647,6 @@ void TADMacLayer::handleSelfMsgReceiver(cMessage *msg) {
                     scheduleAt(simTime() + waitCCA, ccaWBTimeout);
                 } else {
                     //cout << "receiver channel busy" << endl;
-                    /**
-                     * @TODO: set 0 to TSR or not. Now we do nothing
-                     */
-                    // calculate the next wakeup time for this current node
-                    nextWakeupTime[currentNode]+= nodeWakeupInterval[currentNode];
                     // Cancel current event
                     cancelEvent(ccaWBTimeout);
                     // schedule for next wakeup time
@@ -682,8 +691,8 @@ void TADMacLayer::handleSelfMsgReceiver(cMessage *msg) {
                 // wait for right data packet
                 if (dest != myMacAddr) {
                     mac = NULL;
-                    delete msg;
-                    msg = NULL;
+//                    delete msg;
+//                    msg = NULL;
                     return;
                 }
                 cancelEvent(waitDATATimeout);
@@ -693,8 +702,8 @@ void TADMacLayer::handleSelfMsgReceiver(cMessage *msg) {
                 //cout << "calculateNextInterval" << endl;
 
                 mac = NULL;
-                delete msg;
-                msg = NULL;
+//                delete msg;
+//                msg = NULL;
 
                 // if use ack
                 if (useMacAcks) {
@@ -758,6 +767,13 @@ void TADMacLayer::handleSelfMsgReceiver(cMessage *msg) {
             msg->getKind(), macState, phy->getRadioState());
 }
 
+void TADMacLayer::updateTSR(int nodeId, int value) {
+    for (int i = 0; i < TSR_length - 1; i++) {
+        TSR_bank[nodeId][i] = TSR_bank[nodeId][i + 1];
+    }
+    TSR_bank[nodeId][TSR_length - 1] = value;
+}
+
 /**
  *
  */
@@ -768,14 +784,9 @@ void TADMacLayer::calculateNextInterval(cMessage *msg) {
     n02 = n12 = nc02 = nc12 = 0;
     double x1, x2;
     x1 = x2 = 0;
+//    cout << "------------" << endl;
     // Move the array TSR to left to store the new value in TSR[TSR_lenth - 1]
-    log_tsr << "TSR: ";
-    for (int i = 0; i < TSR_length - 1; i++) {
-        TSR_bank[currentNode][i] = TSR_bank[currentNode][i + 1];
-        log_tsr << TSR_bank[currentNode][i];
-    }
-    TSR_bank[currentNode][TSR_length - 1] = (msg == NULL) ? 0 : 1;
-    log_tsr << TSR_bank[currentNode][TSR_length - 1] << endl;
+    updateTSR(currentNode, (msg == NULL) ? 0 : 1);
 
     // Calculate X1;
     for (int i = 0; i < TSR_length / 2; i++) {
@@ -830,14 +841,11 @@ void TADMacLayer::calculateNextInterval(cMessage *msg) {
                 double WUInt_diff = (nodeIdle[currentNode][0] - nodeIdle[currentNode][1]) / 2;
                 if (WUInt_diff * 100 != 0) {
                     nodeWakeupIntervalLock[currentNode] = (nodeWakeupInterval[currentNode] + WUInt_diff) / (wbMiss + 1);
+//                    cout << simTime() << "|" << nodeWakeupInterval[currentNode] << "|" << currentNode << "|" << WUInt_diff<< "|" << wbMiss<<endl;
                     nodeWakeupInterval[currentNode] = (nodeWakeupIntervalLock[currentNode] - idle + sysClock * 2);
                     if (nodeWakeupInterval[currentNode] < 0) {
                         nodeWakeupInterval[currentNode] += nodeWakeupIntervalLock[currentNode];
-                        // Move the array TSR to left to store the new value in TSR[TSR_lenth - 1]
-                        for (int i = 0; i < TSR_length - 1; i++) {
-                            TSR_bank[currentNode][i] = TSR_bank[currentNode][i + 1];
-                        }
-                        TSR_bank[currentNode][TSR_length - 1] = 0;
+                        updateTSR(currentNode, 0);
                     }
                     nodeFirstTime[currentNode]++;
                 }
@@ -875,6 +883,8 @@ void TADMacLayer::calculateNextInterval(cMessage *msg) {
             nodeWakeupInterval[currentNode] = 0.02;
         }
     }
+
+    nextWakeupTime[currentNode] += nodeWakeupInterval[currentNode];
 }
 
 /**
@@ -882,6 +892,7 @@ void TADMacLayer::calculateNextInterval(cMessage *msg) {
  */
 void TADMacLayer::handleLowerMsg(cMessage *msg) {
     handleSelfMsg(msg);
+    delete msg;
 }
 
 void TADMacLayer::handleSelfMsg(cMessage *msg) {
@@ -952,45 +963,6 @@ void TADMacLayer::handleLowerControl(cMessage *msg) {
         debugEV << "control message with wrong kind -- deleting\n";
     }
     delete msg;
-}
-
-/**
- * Encapsulates the received network-layer packet into a MacPkt and set all
- * needed header fields.
- */
-bool TADMacLayer::addToQueue(cMessage *msg) {
-    if (macQueue.size() >= queueLength) {
-        // queue is full, message has to be deleted
-        debugEV << "New packet arrived, but queue is FULL, so new packet is"
-                " deleted\n";
-//        msg->setName("MAC ERROR");
-//        msg->setKind(PACKET_DROPPED);
-//        sendControlUp(msg);
-//        droppedPacket.setReason(DroppedPacket::QUEUE);
-//        emit(BaseLayer::catDroppedPacketSignal, &droppedPacket);
-        nbDroppedDataPackets++;
-
-        return false;
-    }
-
-    macpkt_ptr_t macPkt = new MacPkt(msg->getName());
-    macPkt->setBitLength(headerLength);
-    cObject * const cInfo = msg->removeControlInfo();
-    //EV<<"CSMA received a message from upper layer, name is "
-    //  << msg->getName() <<", CInfo removed, mac addr="
-    //  << cInfo->getNextHopMac()<<endl;
-    macPkt->setDestAddr(getUpperDestinationFromControlInfo(cInfo));
-    delete cInfo;
-    macPkt->setSrcAddr(myMacAddr);
-
-    assert(static_cast<cPacket*>(msg));
-    macPkt->encapsulate(static_cast<cPacket*>(msg));
-
-    macQueue.push_back(macPkt);
-    debugEV << "Max queue length: " << queueLength << ", packet put in queue"
-            "\n  queue size: " << macQueue.size() << " macState: " << macState
-                   << endl;
-    return true;
 }
 
 void TADMacLayer::attachSignal(macpkt_ptr_t macPkt) {

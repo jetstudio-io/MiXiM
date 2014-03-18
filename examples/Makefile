@@ -47,11 +47,14 @@ INCLUDE_PATH = \
     -Iieee802154a/channels/noshadow \
     -Iieee802154a/channels/shadow \
     -Iieee802154a/receivers \
+    -Iieee802154a/results \
     -Ilmac \
     -Ilmac/results \
     -ImultiConnectionManager \
     -Itadmac \
-    -Itadmac/results
+    -Itadmac/results \
+    -Itadmac/sca \
+    -Itadmac/sca1
 
 # Additional object and library files to link with
 EXTRA_OBJS =
@@ -163,18 +166,21 @@ clean:
 	$(Q)-rm -f ieee802154a/channels/noshadow/*_m.cc ieee802154a/channels/noshadow/*_m.h
 	$(Q)-rm -f ieee802154a/channels/shadow/*_m.cc ieee802154a/channels/shadow/*_m.h
 	$(Q)-rm -f ieee802154a/receivers/*_m.cc ieee802154a/receivers/*_m.h
+	$(Q)-rm -f ieee802154a/results/*_m.cc ieee802154a/results/*_m.h
 	$(Q)-rm -f lmac/*_m.cc lmac/*_m.h
 	$(Q)-rm -f lmac/results/*_m.cc lmac/results/*_m.h
 	$(Q)-rm -f multiConnectionManager/*_m.cc multiConnectionManager/*_m.h
 	$(Q)-rm -f tadmac/*_m.cc tadmac/*_m.h
 	$(Q)-rm -f tadmac/results/*_m.cc tadmac/results/*_m.h
+	$(Q)-rm -f tadmac/sca/*_m.cc tadmac/sca/*_m.h
+	$(Q)-rm -f tadmac/sca1/*_m.cc tadmac/sca1/*_m.h
 
 cleanall: clean
 	$(Q)-rm -rf $(PROJECT_OUTPUT_DIR)
 
 depend:
 	$(qecho) Creating dependencies...
-	$(Q)$(MAKEDEPEND) $(INCLUDE_PATH) -f Makefile -P\$$O/ -- $(MSG_CC_FILES)  ./*.cc CSMAMac/*.cc Mac80211/*.cc WSNRouting/*.cc analogueModels/*.cc baseNetwork/*.cc bmac/*.cc bmac/results/*.cc ieee802154Narrow/*.cc ieee802154a/*.cc ieee802154a/channels/*.cc ieee802154a/channels/noshadow/*.cc ieee802154a/channels/shadow/*.cc ieee802154a/receivers/*.cc lmac/*.cc lmac/results/*.cc multiConnectionManager/*.cc tadmac/*.cc tadmac/results/*.cc
+	$(Q)$(MAKEDEPEND) $(INCLUDE_PATH) -f Makefile -P\$$O/ -- $(MSG_CC_FILES)  ./*.cc CSMAMac/*.cc Mac80211/*.cc WSNRouting/*.cc analogueModels/*.cc baseNetwork/*.cc bmac/*.cc bmac/results/*.cc ieee802154Narrow/*.cc ieee802154a/*.cc ieee802154a/channels/*.cc ieee802154a/channels/noshadow/*.cc ieee802154a/channels/shadow/*.cc ieee802154a/receivers/*.cc ieee802154a/results/*.cc lmac/*.cc lmac/results/*.cc multiConnectionManager/*.cc tadmac/*.cc tadmac/results/*.cc tadmac/sca/*.cc tadmac/sca1/*.cc
 
 # DO NOT DELETE THIS LINE -- make depend depends on it.
 $O/CSMAMac/SimpleNetwLayer.o: CSMAMac/SimpleNetwLayer.cc \
