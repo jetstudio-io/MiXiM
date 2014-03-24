@@ -15,6 +15,7 @@
 
 /**
  * Version 1.1: support multi senders
+ * Version 2.0: WU is broadcast
  */
 
 #include "TADMacLayer.h"
@@ -311,6 +312,7 @@ void TADMacLayer::scheduleNextWakeup() {
     // find the next wakeup time
     simtime_t nextWakeup = 10000.0;
     currentNode = 0;
+    bool collision = false;
     for (int i = 1; i <= numberSender; i++) {
         // Check if already passed the wakeup time for a node
         if (nextWakeupTime[i] < simTime()) {
@@ -339,6 +341,7 @@ void TADMacLayer::scheduleNextWakeup() {
                         nextWakeup = nextWakeupTime[i];
                         currentNode = i;
                     }
+                    collision = true;
                 } else { // current node may can be wakeup later -> don't need to increase priority & update TSR
                     nextWakeup = nextWakeupTime[i];
                     currentNode = i;
@@ -349,6 +352,7 @@ void TADMacLayer::scheduleNextWakeup() {
                 updateTSR(currentNode, 0);
                 nextWakeup = nextWakeupTime[i];
                 currentNode = i;
+                collision = true;
             }
         } else {
             if (nextWakeup > nextWakeupTime[i]) {
@@ -358,7 +362,9 @@ void TADMacLayer::scheduleNextWakeup() {
         }
     }
     // reset priority of current node
-    nodePriority[currentNode] = 0;
+    if (collision) {
+        nodePriority[currentNode] = 0;
+    }
     scheduleAt(nextWakeup, wakeup);
 }
 
@@ -387,9 +393,9 @@ void TADMacLayer::handleSelfMsgSender(cMessage *msg) {
                 macState = SLEEP;
                 // Because we have multi sender so we avoid all sender start at same moment
                 double tmp = (rand() % 1000 + 1) / 1000.0;
-                cout << getNode()->getIndex() << ":" << tmp << endl;
-//                scheduleAt(simTime() + tmp, wakeup);
-                scheduleAt(simTime() + startAt, wakeup);
+//                cout << getNode()->getIndex() << ":" << tmp << endl;
+                scheduleAt(simTime() + tmp, wakeup);
+//                scheduleAt(simTime() + startAt, wakeup);
                 return;
             }
             break;
