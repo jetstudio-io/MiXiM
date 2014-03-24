@@ -15,6 +15,7 @@
 
 /**
  * Version 1.1: support multi senders
+ * Version 2.0: WB is broadcast
  */
 
 #ifndef TADMACLAYER_H_

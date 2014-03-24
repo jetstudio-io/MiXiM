@@ -15,7 +15,7 @@
 
 /**
  * Version 1.1: support multi senders
- * Version 2.0: WU is broadcast
+ * Version 2.0: WB is broadcast
  */
 
 #include "TADMacLayer.h"
