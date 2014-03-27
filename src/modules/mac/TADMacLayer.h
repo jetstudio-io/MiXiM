@@ -16,6 +16,7 @@
 /**
  * Version 1.1: support multi senders
  * Version 2.0: WB is broadcast
+ * Change all array to vector
  */
 
 #ifndef TADMACLAYER_H_
@@ -66,7 +67,7 @@ public:
                     lastDataPktSrcAddr(), lastDataPktDestAddr(),
                     txAttempts(0), droppedPacket(), nicId(-1), queueLength(0), animation(false),
                     bitrate(0), txPower(0),
-                    useMacAcks(0), maxTxAttempts(0), stats(false), first_time(1), wakeupIntervalLook(0),
+                    useMacAcks(0), maxTxAttempts(0), stats(false),
                     logFileName("log.csv"), useCorrection(true), numberWakeup(0), sysClockFactor(75), numberSender(1),
                     startAt(0.001)
     {}
@@ -263,19 +264,11 @@ protected:
     bool addToQueue(cMessage * msg);
 
     /** @brief Calculate the next wakeup interval*/
-    void calculateNextInterval(cMessage *msg=NULL);
-
-    /**
-     * These variables used for calculate the error correlator.
-     */
-    int index;
-    int first_time;
-    double idle_array[2];
-    double wakeupIntervalLook;
+    void calculateNextInterval(macpkttad_ptr_t mac=NULL);
 
     const char *logFileName;
     bool useCorrection;
-    bool usePriority;
+//    bool usePriority;
     int numberWakeup;
     int sysClockFactor;
 
@@ -293,10 +286,20 @@ protected:
     int **TSR_bank;
     int *nodeNumberWakeup;
     int *nodePriority;
-    LAddress::L2Type *routeTable;
+//    LAddress::L2Type *routeTable;
     LAddress::L2Type receiverAddress;
 
+    // Mark the node need to calculate TSR in this wakeup time or not.
+    bool *needToCalculate;
+    // list address of node need to be sent ACK
+    std::list<LAddress::L2Type> ACKdestinations;
+
+
     static const int maxCCAattempts = 2;
+    // max time for CCA is 10ms = 0.01s
+    static const double maxCCA = 0.01;
+    // min time for CCA is 1ms = 0.001s
+    static const double minCCA = 0.001;
     int ccaAttempts;
     double startAt;
     int wbMiss;
@@ -307,6 +310,9 @@ protected:
     void scheduleNextWakeup();
     void writeLog();
     void updateTSR(int nodeId, int value);
+    void handleData(macpkttad_ptr_t mac);
+    void calculateTSR();
+    double getWaitCCAtime();
 };
 
 #endif /* TADMACLAYER_H_ */

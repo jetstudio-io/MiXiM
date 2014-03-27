@@ -33,4 +33,7 @@ packet MacPktTAD extends MacPkt
 //    long             sequenceId; // Sequence Number to detect duplicate messages
 	long           idle;  // The idle time that this node waited WB from receiver before send data
 	int            wbMiss;  // The number wake up without receipt WB
+	// node index - we can get this by omnet++ but push here is easier
+	// it is not the data
+	int            nodeIdx;
 }
