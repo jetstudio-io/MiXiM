@@ -1493,6 +1493,7 @@ $O/modules/mac/Mac80211MultiChannel.o: modules/mac/Mac80211MultiChannel.cc \
 $O/modules/mac/TADMacLayer.o: modules/mac/TADMacLayer.cc \
 	base/connectionManager/BaseConnectionManager.h \
 	base/connectionManager/NicEntry.h \
+	base/messages/ChannelSenseRequest_m.h \
 	base/messages/MacPktTAD_m.h \
 	base/messages/MacPkt_m.h \
 	base/modules/AddressingInterface.h \
@@ -1504,7 +1505,10 @@ $O/modules/mac/TADMacLayer.o: modules/mac/TADMacLayer.cc \
 	base/modules/BaseModule.h \
 	base/modules/MiximBatteryAccess.h \
 	base/phyLayer/AnalogueModel.h \
+	base/phyLayer/BaseDecider.h \
 	base/phyLayer/ChannelState.h \
+	base/phyLayer/Decider.h \
+	base/phyLayer/DeciderToPhyInterface.h \
 	base/phyLayer/Interpolation.h \
 	base/phyLayer/MacToPhyControlInfo.h \
 	base/phyLayer/MacToPhyInterface.h \

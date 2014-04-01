@@ -292,17 +292,23 @@ protected:
     // Mark the node need to calculate TSR in this wakeup time or not.
     bool *needToCalculate;
     // list address of node need to be sent ACK
-    std::list<LAddress::L2Type> ACKdestinations;
+    std::list<std::string> ACKdestinations;
 
 
     static const int maxCCAattempts = 2;
-    // max time for CCA is 10ms = 0.01s
-    static const double maxCCA = 0.01;
+    // max time for CCA is 5ms = 0.005s
+    static const double maxCCA = 0.005;
     // min time for CCA is 1ms = 0.001s
     static const double minCCA = 0.001;
     int ccaAttempts;
     double startAt;
     int wbMiss;
+    // The number packet receipt but have error because of collision
+    int nbBrokenPacket;
+    // Number of collision - in calculate by receiver
+    int nbCollision;
+    int nbWakeup;
+    bool isCollision;
 
     ofstream logFile;
     ofstream log_tsr;

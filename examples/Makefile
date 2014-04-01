@@ -55,7 +55,8 @@ INCLUDE_PATH = \
     -Itadmac/results \
     -Itadmac/results/1 \
     -Itadmac/results/2 \
-    -Itadmac/results/3
+    -Itadmac/results/3 \
+    -Itadmac/results/4
 
 # Additional object and library files to link with
 EXTRA_OBJS =
@@ -176,13 +177,14 @@ clean:
 	$(Q)-rm -f tadmac/results/1/*_m.cc tadmac/results/1/*_m.h
 	$(Q)-rm -f tadmac/results/2/*_m.cc tadmac/results/2/*_m.h
 	$(Q)-rm -f tadmac/results/3/*_m.cc tadmac/results/3/*_m.h
+	$(Q)-rm -f tadmac/results/4/*_m.cc tadmac/results/4/*_m.h
 
 cleanall: clean
 	$(Q)-rm -rf $(PROJECT_OUTPUT_DIR)
 
 depend:
 	$(qecho) Creating dependencies...
-	$(Q)$(MAKEDEPEND) $(INCLUDE_PATH) -f Makefile -P\$$O/ -- $(MSG_CC_FILES)  ./*.cc CSMAMac/*.cc Mac80211/*.cc WSNRouting/*.cc analogueModels/*.cc baseNetwork/*.cc bmac/*.cc bmac/results/*.cc ieee802154Narrow/*.cc ieee802154a/*.cc ieee802154a/channels/*.cc ieee802154a/channels/noshadow/*.cc ieee802154a/channels/shadow/*.cc ieee802154a/receivers/*.cc ieee802154a/results/*.cc lmac/*.cc lmac/results/*.cc multiConnectionManager/*.cc tadmac/*.cc tadmac/results/*.cc tadmac/results/1/*.cc tadmac/results/2/*.cc tadmac/results/3/*.cc
+	$(Q)$(MAKEDEPEND) $(INCLUDE_PATH) -f Makefile -P\$$O/ -- $(MSG_CC_FILES)  ./*.cc CSMAMac/*.cc Mac80211/*.cc WSNRouting/*.cc analogueModels/*.cc baseNetwork/*.cc bmac/*.cc bmac/results/*.cc ieee802154Narrow/*.cc ieee802154a/*.cc ieee802154a/channels/*.cc ieee802154a/channels/noshadow/*.cc ieee802154a/channels/shadow/*.cc ieee802154a/receivers/*.cc ieee802154a/results/*.cc lmac/*.cc lmac/results/*.cc multiConnectionManager/*.cc tadmac/*.cc tadmac/results/*.cc tadmac/results/1/*.cc tadmac/results/2/*.cc tadmac/results/3/*.cc tadmac/results/4/*.cc
 
 # DO NOT DELETE THIS LINE -- make depend depends on it.
 $O/CSMAMac/SimpleNetwLayer.o: CSMAMac/SimpleNetwLayer.cc \
