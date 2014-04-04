@@ -286,13 +286,13 @@ protected:
     int **TSR_bank;
     int *nodeNumberWakeup;
     int *nodePriority;
-//    LAddress::L2Type *routeTable;
+    LAddress::L2Type *routeTable;
     LAddress::L2Type receiverAddress;
 
     // Mark the node need to calculate TSR in this wakeup time or not.
     bool *needToCalculate;
     // list address of node need to be sent ACK
-    std::list<std::string> ACKdestinations;
+    list<int> ACKdestinations;
 
 
     static const int maxCCAattempts = 2;

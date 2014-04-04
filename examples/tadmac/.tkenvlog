@@ -1,0 +1,18 @@
+----------------------------------------------------------------------
+
+
+Tcl error: modinsp.cc#621: bad window path name ""
+    while executing
+"winfo toplevel [focus]"
+    invoked from within
+"if [catch {
+       opp_displaystring $dispstr parse tags $submodptr 1
+
+       # scale (x,y)
+       if {$scaling != ""} {
+           set x [expr $scali..."
+    (procedure "graphicalModuleWindow:drawSubmodule" line 20)
+    invoked from within
+"graphicalModuleWindow:drawSubmodule .ptr0x7fd7a3fc9f30-2.c ptr0x7fd7a3fd02a0 150 100 {node[1]} {r=Tã¥›Ä °?“V-²?ú~j¼t“˜?J+‡É?§Î;p=150,100;i2=s..."
+
+
