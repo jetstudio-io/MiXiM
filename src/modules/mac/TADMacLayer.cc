@@ -63,7 +63,6 @@ void TADMacLayer::initialize(int stage) {
         startAt = hasPar("startAt") ? par("startAt") : 0.001;
         logFileName = par("logFileName").stringValue();
 
-
         queueLength = hasPar("queueLength") ? par("queueLength") : 10;
         animation = hasPar("animation") ? par("animation") : true;
         bitrate = hasPar("bitrate") ? par("bitrate") : 15360.;
@@ -143,8 +142,6 @@ void TADMacLayer::initialize(int stage) {
         sentACK->setKind(TADMAC_SENT_ACK);
 
         if (role == NODE_RECEIVER) {
-            log_tsr.open("results/tsr.csv");
-
             int nodeIdx = getNode()->getIndex();
             TSR_length = 4;
             // allocate memory & initialize for TSR bank
@@ -573,6 +570,10 @@ void TADMacLayer::handleSelfMsgReceiver(cMessage *msg) {
                         currentNode = i;
                         nodeNumberWakeup[currentNode]++;
                         writeLog();
+//                        ostringstream converter;
+//                        converter << "WUInt_" << i;
+//                        recordScalar(converter.str().c_str(), start);
+//                        recordScalar(converter.str().c_str(), round(nodeWakeupInterval[currentNode] * 1000));
                     }
                 }
                 nbWakeup++;
