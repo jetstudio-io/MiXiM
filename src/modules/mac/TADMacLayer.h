@@ -301,6 +301,10 @@ protected:
     double startAt;
     int wbMiss;
 
+    int nbCollision;
+    int *nodeCollision;
+    int *nodeChoosen;
+
     ofstream logFile;
     ofstream log_tsr;
 

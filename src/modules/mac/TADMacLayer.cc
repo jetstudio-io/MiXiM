@@ -194,6 +194,8 @@ void TADMacLayer::initialize(int stage) {
             nodeNumberWakeup = new int[numberSender+1];
             nodeFirstTime = new int[numberSender+1];
             nodePriority = new int[numberSender+1];
+            nodeCollision = new int[numberSender+1];
+            nodeChoosen = new int[numberSender+1];
             for (int i = 1; i <= numberSender; i++) {
                 nodePriority[i] = 0;
                 nodeIndex[i] = 0;
@@ -201,10 +203,14 @@ void TADMacLayer::initialize(int stage) {
                 nodeFirstTime[i] = 1;
                 nodeIdle[i] = new double[2];
                 nodeIdle[i][0] = nodeIdle[i][1] = 0;
+                nodeCollision[i] = 0;
+                nodeChoosen[i] = 0;
             }
         } else {
             logFile.open("results/sender.csv");
         }
+        nbCollision = 0;
+        numberWakeup = 0;
         scheduleAt(0.0, startTADMAC);
     }
 }
@@ -235,8 +241,6 @@ TADMacLayer::~TADMacLayer() {
 void TADMacLayer::finish() {
     BaseMacLayer::finish();
 
-    if (role == NODE_RECEIVER) {
-    }
     // record stats
     if (stats) {
         recordScalar("nbTxDataPackets", nbTxDataPackets);
@@ -246,10 +250,20 @@ void TADMacLayer::finish() {
         recordScalar("nbMissedAcks", nbMissedAcks);
         recordScalar("nbRecvdAcks", nbRecvdAcks);
         recordScalar("nbTxAcks", nbTxAcks);
-        recordScalar("nbDroppedDataPackets", nbDroppedDataPackets);
-        recordScalar("WUInt", wakeupInterval);
-        //recordScalar("timeRX", timeRX);
-        //recordScalar("timeTX", timeTX);
+        recordScalar("numberWakeup", numberWakeup);
+        recordScalar("nbCollision", nbCollision);
+        if (role == NODE_RECEIVER) {
+            for (int i = 1; i <= numberSender; i++) {
+                ostringstream converter;
+                converter << "nodeCollision_" << i;
+                recordScalar(converter.str().c_str(), nodeCollision[i]);
+                // Create file to log wakeup interval
+                converter.str("");
+                converter.clear();
+                converter << "nodeChoosen_" << i;
+                recordScalar(converter.str().c_str(), nodeChoosen[i]);
+            }
+        }
     }
 }
 
@@ -313,7 +327,9 @@ void TADMacLayer::scheduleNextWakeup() {
     simtime_t nextWakeup = 10000.0;
     currentNode = 0;
     bool collision = false;
+    bool *isCollision = new bool[numberSender+1];
     for (int i = 1; i <= numberSender; i++) {
+        isCollision[i] = false;
         // Check if already passed the wakeup time for a node
         if (nextWakeupTime[i] < simTime()) {
 //            cout << simTime() << "|" << nextWakeupTime[i] << "|" << i << "|" << nodeWakeupInterval[i] << endl;
@@ -342,6 +358,8 @@ void TADMacLayer::scheduleNextWakeup() {
                         currentNode = i;
                     }
                     collision = true;
+                    isCollision[i] = true;
+                    isCollision[currentNode] = true;
                 } else { // current node may can be wakeup later -> don't need to increase priority & update TSR
                     nextWakeup = nextWakeupTime[i];
                     currentNode = i;
@@ -353,6 +371,8 @@ void TADMacLayer::scheduleNextWakeup() {
                 nextWakeup = nextWakeupTime[i];
                 currentNode = i;
                 collision = true;
+                isCollision[i] = true;
+                isCollision[currentNode] = true;
             }
         } else {
             if (nextWakeup > nextWakeupTime[i]) {
@@ -363,7 +383,14 @@ void TADMacLayer::scheduleNextWakeup() {
     }
     // reset priority of current node
     if (collision) {
+        nbCollision++;
         nodePriority[currentNode] = 0;
+        nodeChoosen[currentNode]++;
+        for (int i = 1; i <= numberSender; i++) {
+            if (isCollision[i]) {
+                nodeCollision[i]++;
+            }
+        }
     }
     scheduleAt(nextWakeup, wakeup);
 }
@@ -416,6 +443,7 @@ void TADMacLayer::handleSelfMsgSender(cMessage *msg) {
                 // reset number resend data
                 txAttempts = 0;
                 logFile << round(start.dbl() * 1000) << " ";
+                numberWakeup++;
                 return;
             }
             break;
@@ -622,7 +650,7 @@ void TADMacLayer::handleSelfMsgReceiver(cMessage *msg) {
                 // reset CCA attempts
                 ccaAttempts = 0;
                 scheduleAt(start + waitCCA, ccaWBTimeout);
-//                numberWakeup++;
+                numberWakeup++;
 //                log_wakeupInterval << numberWakeup << "," << round(start.dbl() * 1000) << "," << round(wakeupInterval * 1000) << endl;
 
                 nodeNumberWakeup[currentNode]++;
