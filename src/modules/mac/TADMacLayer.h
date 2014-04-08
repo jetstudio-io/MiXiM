@@ -304,6 +304,7 @@ protected:
     int nbCollision;
     int *nodeCollision;
     int *nodeChoosen;
+    int *nodeBroken;
 
     ofstream logFile;
     ofstream log_tsr;

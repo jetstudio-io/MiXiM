@@ -196,6 +196,7 @@ void TADMacLayer::initialize(int stage) {
             nodePriority = new int[numberSender+1];
             nodeCollision = new int[numberSender+1];
             nodeChoosen = new int[numberSender+1];
+            nodeBroken = new int[numberSender+1];
             for (int i = 1; i <= numberSender; i++) {
                 nodePriority[i] = 0;
                 nodeIndex[i] = 0;
@@ -205,6 +206,7 @@ void TADMacLayer::initialize(int stage) {
                 nodeIdle[i][0] = nodeIdle[i][1] = 0;
                 nodeCollision[i] = 0;
                 nodeChoosen[i] = 0;
+                nodeBroken[i] = 0;
             }
         } else {
             logFile.open("results/sender.csv");
@@ -262,6 +264,11 @@ void TADMacLayer::finish() {
                 converter.clear();
                 converter << "nodeChoosen_" << i;
                 recordScalar(converter.str().c_str(), nodeChoosen[i]);
+
+                converter.str("");
+                converter.clear();
+                converter << "nodeBroken_" << i;
+                recordScalar(converter.str().c_str(), nodeBroken[i]);
             }
         }
     }
@@ -389,6 +396,9 @@ void TADMacLayer::scheduleNextWakeup() {
         for (int i = 1; i <= numberSender; i++) {
             if (isCollision[i]) {
                 nodeCollision[i]++;
+                if (i != currentNode) {
+                    nodeBroken[i]++;
+                }
             }
         }
     }
