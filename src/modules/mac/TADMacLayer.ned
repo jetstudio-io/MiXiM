@@ -76,6 +76,7 @@ simple TADMacLayer extends BaseMacLayer
 		
 		bool useCorrection = default(true);
 		bool usePriority = default(true);
+		bool useWBMiss = default(true);
 		
 		string logFileName = default("log.csv");
 		// used to define number sender in network - for receiver node

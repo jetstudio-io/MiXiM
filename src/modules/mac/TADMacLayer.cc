@@ -58,6 +58,7 @@ void TADMacLayer::initialize(int stage) {
         alpha = hasPar("alpha") ? par("alpha") : 0.5;
         useCorrection = hasPar("useCorrection") ? par("useCorrection") : true;
         usePriority = hasPar("usePriority") ? par("usePriority") : true;
+        useWBMiss = hasPar("useWBMiss") ? par("useWBMiss") : true;
         numberSender = hasPar("numberSender") ? par("numberSender") : 1;
         startAt = hasPar("startAt") ? par("startAt") : 0.001;
         logFileName = par("logFileName").stringValue();
@@ -884,7 +885,11 @@ void TADMacLayer::calculateNextInterval(cMessage *msg) {
             if (nodeIdle[currentNode][0] != 0 && nodeIdle[currentNode][1] != 0) {
                 double WUInt_diff = (nodeIdle[currentNode][0] - nodeIdle[currentNode][1]) / 2;
                 if (WUInt_diff * 100 != 0) {
-                    nodeWakeupIntervalLock[currentNode] = (nodeWakeupInterval[currentNode] + WUInt_diff) / (wbMiss + 1);
+                    if (useWBMiss) {
+                        nodeWakeupIntervalLock[currentNode] = (nodeWakeupInterval[currentNode] + WUInt_diff) / (wbMiss + 1);
+                    } else {
+                        nodeWakeupIntervalLock[currentNode] = nodeWakeupInterval[currentNode] + WUInt_diff;
+                    }
 //                    cout << simTime() << "|" << nodeWakeupInterval[currentNode] << "|" << currentNode << "|" << WUInt_diff<< "|" << wbMiss<<endl;
                     nodeWakeupInterval[currentNode] = (nodeWakeupIntervalLock[currentNode] - idle + sysClock * 2);
                     if (nodeWakeupInterval[currentNode] < 0) {

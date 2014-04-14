@@ -276,6 +276,7 @@ protected:
     const char *logFileName;
     bool useCorrection;
     bool usePriority;
+    bool useWBMiss;
     int numberWakeup;
     int sysClockFactor;
 
