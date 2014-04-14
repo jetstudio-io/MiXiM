@@ -185,6 +185,7 @@ void TADMacLayer::initialize(int stage) {
             nodeNumberWakeup = new int[numberSender+1];
             nodeFirstTime = new int[numberSender+1];
             nodePriority = new int[numberSender+1];
+            nodeCollision = new int[numberSender+1];
             for (int i = 1; i <= numberSender; i++) {
                 nodePriority[i] = 0;
                 nodeIndex[i] = 0;
@@ -192,6 +193,7 @@ void TADMacLayer::initialize(int stage) {
                 nodeFirstTime[i] = 1;
                 nodeIdle[i] = new double[2];
                 nodeIdle[i][0] = nodeIdle[i][1] = 0;
+                nodeCollision[i] = 0;
             }
         } else {
             logFile.open("results/sender.csv");
@@ -241,6 +243,13 @@ void TADMacLayer::finish() {
         recordScalar("nbCollision", nbCollision);
         recordScalar("nbBrokenPacket", nbBrokenPacket);
         recordScalar("nbWakeup", nbWakeup);
+        if (role == NODE_RECEIVER) {
+            for (int i = 1; i <= numberSender; i++) {
+                ostringstream converter;
+                converter << "nodeCollision_" << i;
+                recordScalar(converter.str().c_str(), nodeCollision[i]);
+            }
+        }
 //        recordScalar("WUInt", wakeupInterval);
         //recordScalar("timeRX", timeRX);
         //recordScalar("timeTX", timeTX);
@@ -312,11 +321,11 @@ void TADMacLayer::scheduleNextWakeup() {
     // Find the min value of wakeup time
     for (int i = 1; i <= numberSender; i++) {
         // Check if already passed the wakeup time for a node
-        if (nextWakeupTime[i] < simTime()) {
-            nextWakeupTime[i] = simTime() + sysClock;
-        }
+//        if (nextWakeupTime[i] < simTime()) {
+//            nextWakeupTime[i] = simTime() + sysClock;
+//        }
         // if wakeup time for node i is smaller than min value
-        if (min > nextWakeupTime[i]) {
+        if (min > nextWakeupTime[i] && nextWakeupTime[i] >= simTime()) {
             min = nextWakeupTime[i];
         }
     }
@@ -328,6 +337,7 @@ void TADMacLayer::scheduleNextWakeup() {
         if (nextWakeupTime[i] < min + (waitDATA + sysClock + waitCCA) * 2) {
             collision++;
             needToCalculate[i] = true;
+            nodeCollision[i]++;
             if (nextWakeup < nextWakeupTime[i]) {
                 nextWakeup = nextWakeupTime[i];
             }

@@ -307,6 +307,7 @@ protected:
     int nbBrokenPacket;
     // Number of collision - in calculate by receiver
     int nbCollision;
+    int *nodeCollision;
     int nbWakeup;
     bool isCollision;
 
