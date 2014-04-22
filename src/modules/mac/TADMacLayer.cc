@@ -184,7 +184,8 @@ void TADMacLayer::initialize(int stage) {
             for (int i = 1; i <= numberSender; i++) {
                 nodeWakeupInterval[i] = wakeupInterval;
                 nodeWakeupIntervalLock[i] = 0.0;
-                nextWakeupTime[i] = (rand() % 1000 + 1) / 1000.0;
+                nextWakeupTime[i] = 0.0;
+//                nextWakeupTime[i] = (rand() % 1000 + 1) / 1000.0;
 //                nextWakeupTime[i] = (100 * i) / 1000.0;
                 //cout << nextWakeupTime[i] << endl;
             }
@@ -340,7 +341,7 @@ void TADMacLayer::scheduleNextWakeup() {
         isCollision[i] = false;
         // Check if already passed the wakeup time for a node
         if (nextWakeupTime[i] < simTime()) {
-//            cout << simTime() << "|" << nextWakeupTime[i] << "|" << i << "|" << nodeWakeupInterval[i] << endl;
+            cout << simTime() << "|" << "|" << i << nextWakeupTime[i] << "|" << nodeWakeupInterval[i] << endl;
             int tmp = ceil((simTime().dbl() - nextWakeupTime[i].dbl()) / nodeWakeupInterval[i]);
             nextWakeupTime[i] += tmp * nodeWakeupInterval[i];
             for (int j = 0; j < tmp; j++) {
