@@ -146,7 +146,7 @@ void TADMacLayer::initialize(int stage) {
             log_tsr.open("results/tsr.csv");
 
             int nodeIdx = getNode()->getIndex();
-            TSR_length = 4;
+            TSR_length = 8;
             // allocate memory & initialize for TSR bank
             TSR_bank = new int*[numberSender+1];
             for (int i = 1; i <= numberSender; i++) {
@@ -180,11 +180,13 @@ void TADMacLayer::initialize(int stage) {
             // allocate memory & initialize for nodeWakeupInterval & nextWakeupIntervalTime
             nodeWakeupInterval = new double[numberSender+1];
             nodeWakeupIntervalLock = new double[numberSender+1];
+            nodeSumWUInt = new double[numberSender+1];
             nextWakeupTime = new simtime_t[numberSender+1];
             for (int i = 1; i <= numberSender; i++) {
                 nodeWakeupInterval[i] = wakeupInterval;
                 nodeWakeupIntervalLock[i] = 0.0;
                 nextWakeupTime[i] = 0.0;
+                nodeSumWUInt[i] = 0.0;
 //                nextWakeupTime[i] = (rand() % 1000 + 1) / 1000.0;
 //                nextWakeupTime[i] = (100 * i) / 1000.0;
                 //cout << nextWakeupTime[i] << endl;
@@ -433,8 +435,9 @@ void TADMacLayer::handleSelfMsgSender(cMessage *msg) {
                 // Because we have multi sender so we avoid all sender start at same moment
                 double tmp = (rand() % 1000 + 1) / 1000.0;
 //                cout << getNode()->getIndex() << ":" << tmp << endl;
-                scheduleAt(simTime() + tmp, wakeup);
+//                scheduleAt(simTime() + tmp, wakeup);
 //                scheduleAt(simTime() + startAt, wakeup);
+                scheduleAt(simTime(), wakeup);
                 return;
             }
             break;
@@ -830,10 +833,14 @@ void TADMacLayer::calculateNextInterval(cMessage *msg) {
     n02 = n12 = nc02 = nc12 = 0;
     double x1, x2;
     x1 = x2 = 0;
-//    cout << "------------" << endl;
+    log_tsr << "------------  " << start << "  ------------ node: " << currentNode << endl;
+    log_tsr << "WUInt: " << nodeWakeupInterval[currentNode] << endl;
     // Move the array TSR to left to store the new value in TSR[TSR_lenth - 1]
     updateTSR(currentNode, (msg == NULL) ? 0 : 1);
-
+    for (int i = 0; i < TSR_length; i++) {
+        log_tsr << TSR_bank[currentNode][i];
+    }
+    log_tsr << endl;
     // Calculate X1;
     for (int i = 0; i < TSR_length / 2; i++) {
         if (TSR_bank[currentNode][i] == 1) {
@@ -849,7 +856,7 @@ void TADMacLayer::calculateNextInterval(cMessage *msg) {
         }
     }
     x1 = n01 * nc01 * 2 / TSR_length - n11 * nc11 * 2 / TSR_length;
-    //log_tsr << "n01: " << n01 << " | nc01: " << nc01 << " | n11: " << n11 << " | nc11: " << nc11 << " | x1: " << x1 << endl;
+    log_tsr << "n01: " << n01 << " | nc01: " << nc01 << " | n11: " << n11 << " | nc11: " << nc11 << " | x1: " << x1 << endl;
     // Calculate X2
     for (int i = TSR_length / 2; i < TSR_length; i++) {
         if (TSR_bank[currentNode][i] == 1) {
@@ -865,75 +872,118 @@ void TADMacLayer::calculateNextInterval(cMessage *msg) {
         }
     }
     x2 = n02 * nc02 * 2 / TSR_length - n12 * nc12 * 2 / TSR_length;
-    //log_tsr << "n02: " << n02 << " | nc02: " << nc02 << " | n12: " << n12 << " | nc12: " << nc12 << " | x2: " << x2 << endl;
+    log_tsr << "n02: " << n02 << " | nc02: " << nc02 << " | n12: " << n12 << " | nc12: " << nc12 << " | x2: " << x2 << endl;
 
     // calculate the traffic weighting
     double mu = alpha * x1 + (1 - alpha) * x2;
-    //log_tsr << "mu: " << mu << endl;
-    if (useCorrection) {
-        // calculate the correlator see code matlab in IWCLD_11/First_paper/Adaptive_MAC/Done_Codes/Test_For_IWCLD.m
-        if (mu * 100 == 0) {
-            double idle = 0;
-            int wbMiss = 0;
-            if (msg != NULL) {
-                macpkttad_ptr_t mac  = static_cast<macpkttad_ptr_t>(msg);
-                idle = double(mac->getIdle()) / 1000.0;
-                wbMiss = mac->getWbMiss();
-                mac = NULL;
-                nodeIdle[currentNode][nodeIndex[currentNode]] = idle;
-                nodeIndex[currentNode]++;
-            }
+    log_tsr << "mu: " << mu << endl;
+    /**
+     * Use new adaptive function
+     */
+    if (useWBMiss) {
+        nodeSumWUInt[currentNode] += nodeWakeupInterval[currentNode];
+        if (msg != NULL) {
+            macpkttad_ptr_t mac  = static_cast<macpkttad_ptr_t>(msg);
+            double idle = double(mac->getIdle()) / 1000.0;
+            int wbMiss = mac->getWbMiss();
+            mac = NULL;
+            nodeIdle[currentNode][1] = idle;
+            log_tsr << "idle: " << idle << endl;
             if (nodeIdle[currentNode][0] != 0 && nodeIdle[currentNode][1] != 0) {
-                double WUInt_diff = (nodeIdle[currentNode][0] - nodeIdle[currentNode][1]) / 2;
-                if (WUInt_diff * 100 != 0) {
-                    if (useWBMiss) {
-                        nodeWakeupIntervalLock[currentNode] = (nodeWakeupInterval[currentNode] + WUInt_diff) / (wbMiss + 1);
-                    } else {
-                        nodeWakeupIntervalLock[currentNode] = nodeWakeupInterval[currentNode] + WUInt_diff;
-                    }
-//                    cout << simTime() << "|" << nodeWakeupInterval[currentNode] << "|" << currentNode << "|" << WUInt_diff<< "|" << wbMiss<<endl;
-                    nodeWakeupInterval[currentNode] = (nodeWakeupIntervalLock[currentNode] - idle + sysClock * 2);
-                    if (nodeWakeupInterval[currentNode] < 0) {
-                        nodeWakeupInterval[currentNode] += nodeWakeupIntervalLock[currentNode];
-                        updateTSR(currentNode, 0);
-                    }
-                    nodeFirstTime[currentNode]++;
-                }
-                nodeIdle[currentNode][0] = nodeIdle[currentNode][1] = 0;
-                nodeIndex[currentNode] = 0;
-            }
-        } else {
-            if (nodeIndex[currentNode] == 1) {
-                nodeIndex[currentNode]--;
-            }
-            if (nodeWakeupIntervalLock[currentNode] * 100 == 0) {
+                // Calculate the TxInt of current node
+                double TxInt = (nodeSumWUInt[currentNode] + nodeIdle[currentNode][0] - nodeIdle[currentNode][1]) / (wbMiss + 1);
+                log_tsr << "TxInt: " << TxInt << endl;
+                // We lock the TxInt / 2 for WUInt after
+                nodeWakeupIntervalLock[currentNode] = TxInt / 2;
+                // Next WUInt
+                nodeWakeupInterval[currentNode] = nodeWakeupIntervalLock[currentNode] - idle + sysClock;
+                log_tsr << "next WUInt: " << nodeWakeupInterval[currentNode] << endl;
+            } else {
                 nodeWakeupInterval[currentNode] += mu * sysClockFactor * sysClock;
                 nodeWakeupInterval[currentNode] = round(nodeWakeupInterval[currentNode] * 1000.0) / 1000.0;
                 if (nodeWakeupInterval[currentNode] < 0.02) {
                     nodeWakeupInterval[currentNode] = 0.02;
                 }
-            } else {
-                nodeWakeupInterval[currentNode] = nodeWakeupIntervalLock[currentNode];
             }
-        }
-
-        if (nodeFirstTime[currentNode] == 2) {
-            nodeFirstTime[currentNode]++;
+            // re-calculate the total WUInt between 2 times receipt data packet
+            nodeSumWUInt[currentNode] = 0;
+            nodeIdle[currentNode][0] = idle;
+            nodeIdle[currentNode][1] = 0;
         } else {
-            if (nodeFirstTime[currentNode] == 3) {
+            // If we already calculated the WUInt convergent -> use this, don't need to calculate
+            if (nodeWakeupIntervalLock[currentNode] > 0) {
                 nodeWakeupInterval[currentNode] = nodeWakeupIntervalLock[currentNode];
+                //
                 nodeWakeupIntervalLock[currentNode] = 0;
-                nodeFirstTime[currentNode] = 1;
+            } else {
+                nodeWakeupInterval[currentNode] += mu * sysClockFactor * sysClock;
+                nodeWakeupInterval[currentNode] = round(nodeWakeupInterval[currentNode] * 1000.0) / 1000.0;
+                if (nodeWakeupInterval[currentNode] < 0.02) {
+                    nodeWakeupInterval[currentNode] = 0.02;
+                }
             }
         }
     } else {
-        nodeWakeupInterval[currentNode] += mu * sysClockFactor * sysClock;
-        nodeWakeupInterval[currentNode] = round(nodeWakeupInterval[currentNode] * 1000.0) / 1000.0;
-        if (nodeWakeupInterval[currentNode] < 0.02) {
-            nodeWakeupInterval[currentNode] = 0.02;
+        if (useCorrection) {
+            // calculate the correlator see code matlab in IWCLD_11/First_paper/Adaptive_MAC/Done_Codes/Test_For_IWCLD.m
+            if (mu * 100 == 0) {
+                double idle = 0;
+                int wbMiss = 0;
+                if (msg != NULL) {
+                    macpkttad_ptr_t mac  = static_cast<macpkttad_ptr_t>(msg);
+                    idle = double(mac->getIdle()) / 1000.0;
+                    wbMiss = mac->getWbMiss();
+                    mac = NULL;
+                    nodeIdle[currentNode][nodeIndex[currentNode]] = idle;
+                    nodeIndex[currentNode]++;
+                }
+                if (nodeIdle[currentNode][0] != 0 && nodeIdle[currentNode][1] != 0) {
+                    double WUInt_diff = (nodeIdle[currentNode][0] - nodeIdle[currentNode][1]) / 2;
+                    if (WUInt_diff * 100 != 0) {
+                        nodeWakeupIntervalLock[currentNode] = nodeWakeupInterval[currentNode] + WUInt_diff;
+    //                    cout << simTime() << "|" << nodeWakeupInterval[currentNode] << "|" << currentNode << "|" << WUInt_diff<< "|" << wbMiss<<endl;
+                        nodeWakeupInterval[currentNode] = (nodeWakeupIntervalLock[currentNode] - idle + sysClock * 2);
+                        if (nodeWakeupInterval[currentNode] < 0) {
+                            nodeWakeupInterval[currentNode] += nodeWakeupIntervalLock[currentNode];
+                            updateTSR(currentNode, 0);
+                        }
+                        nodeFirstTime[currentNode]++;
+                    }
+                    nodeIdle[currentNode][0] = nodeIdle[currentNode][1] = 0;
+                    nodeIndex[currentNode] = 0;
+                }
+            } else {
+                if (nodeIndex[currentNode] == 1) {
+                    nodeIndex[currentNode]--;
+                }
+                if (nodeWakeupIntervalLock[currentNode] * 100 == 0) {
+                    nodeWakeupInterval[currentNode] += mu * sysClockFactor * sysClock;
+                    nodeWakeupInterval[currentNode] = round(nodeWakeupInterval[currentNode] * 1000.0) / 1000.0;
+                    if (nodeWakeupInterval[currentNode] < 0.02) {
+                        nodeWakeupInterval[currentNode] = 0.02;
+                    }
+                } else {
+                    nodeWakeupInterval[currentNode] = nodeWakeupIntervalLock[currentNode];
+                }
+            }
+
+            if (nodeFirstTime[currentNode] == 2) {
+                nodeFirstTime[currentNode]++;
+            } else {
+                if (nodeFirstTime[currentNode] == 3) {
+                    nodeWakeupInterval[currentNode] = nodeWakeupIntervalLock[currentNode];
+                    nodeWakeupIntervalLock[currentNode] = 0;
+                    nodeFirstTime[currentNode] = 1;
+                }
+            }
+        } else {
+            nodeWakeupInterval[currentNode] += mu * sysClockFactor * sysClock;
+            nodeWakeupInterval[currentNode] = round(nodeWakeupInterval[currentNode] * 1000.0) / 1000.0;
+            if (nodeWakeupInterval[currentNode] < 0.02) {
+                nodeWakeupInterval[currentNode] = 0.02;
+            }
         }
     }
-
     nextWakeupTime[currentNode] += nodeWakeupInterval[currentNode];
 }
 
